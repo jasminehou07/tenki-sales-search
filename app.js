@@ -347,7 +347,7 @@ function renderSummary(rows) {
 }
 
 function renderTopItems(rows) {
-  const topItems = [...rows].sort((a, b) => b.sales - a.sales || b.units - a.units).slice(0, 25);
+  const topItems = [...rows].sort((a, b) => b.units - a.units || b.sales - a.sales).slice(0, 25);
   els.topItemsCount.textContent = `${whole.format(rows.length)} sold items`;
   if (!topItems.length) {
     els.topItemsBody.innerHTML = `<tr><td colspan="6">No sold items found for this search.</td></tr>`;
