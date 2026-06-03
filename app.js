@@ -25,15 +25,12 @@ const els = {
   compareMonthSelect: document.getElementById("compareMonthSelect"),
   compareDaySelect: document.getElementById("compareDaySelect"),
   resetButton: document.getElementById("resetButton"),
-  exportButton: document.getElementById("exportButton"),
   salesMetric: document.getElementById("salesMetric"),
   unitsMetric: document.getElementById("unitsMetric"),
   shopCompareBody: document.getElementById("shopCompareBody"),
   shopCompareCount: document.getElementById("shopCompareCount"),
   dayCompareBody: document.getElementById("dayCompareBody"),
   dayCompareStatus: document.getElementById("dayCompareStatus"),
-  resultCount: document.getElementById("resultCount"),
-  resultsBody: document.getElementById("resultsBody"),
   topItemsBody: document.getElementById("topItemsBody"),
   topItemsCount: document.getElementById("topItemsCount"),
   eventList: document.getElementById("eventList"),
@@ -65,7 +62,7 @@ function setEnabled(enabled) {
   [
     els.genreSelect, els.shopSelect, els.yearSelect, els.monthSelect, els.daySelect,
     els.compareYearSelect, els.compareMonthSelect, els.compareDaySelect,
-    els.resetButton, els.exportButton
+    els.resetButton
   ].forEach((el) => {
     el.disabled = !enabled;
   });
@@ -268,7 +265,6 @@ async function update() {
   const compareDate = selectedCompareDate();
 
   if (!date || !state.availableDates.has(date)) {
-    state.filtered = [];
     renderEmptyState();
     renderEvents(date);
     return;
@@ -281,11 +277,9 @@ async function update() {
     ? filterRows(await loadDate(compareDate), { genre, shop })
     : [];
 
-  state.filtered = baseRows;
   renderSummary(baseRows);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, date, compareDate);
-  renderTable(baseRows);
   renderTopItems(baseItems);
   renderEvents(date);
 }
@@ -305,8 +299,6 @@ function renderEmptyState() {
   els.shopCompareBody.innerHTML = `<tr><td colspan="5">Choose a day to compare shops.</td></tr>`;
   els.dayCompareStatus.textContent = "Choose a day";
   els.dayCompareBody.innerHTML = `<div class="empty">Choose a day to compare sales by date.</div>`;
-  els.resultCount.textContent = "Choose a day";
-  els.resultsBody.innerHTML = `<tr><td colspan="8">Choose a day to search daily sales.</td></tr>`;
   els.topItemsCount.textContent = "Choose a day";
   els.topItemsBody.innerHTML = `<tr><td colspan="6">Choose a day to see top items.</td></tr>`;
 }
@@ -338,7 +330,6 @@ function renderSummary(rows) {
 
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
-  els.resultCount.textContent = `${whole.format(rows.length)} matching rows`;
 }
 
 function renderTopItems(rows) {
@@ -468,27 +459,6 @@ function renderDayComparison(currentRows, compareRows, date, compareDate) {
   `;
 }
 
-function renderTable(rows) {
-  const topRows = [...rows].sort((a, b) => b.sales - a.sales).slice(0, 250);
-  if (!topRows.length) {
-    els.resultsBody.innerHTML = `<tr><td colspan="8">No matching sales found.</td></tr>`;
-    return;
-  }
-
-  els.resultsBody.innerHTML = topRows.map((row) => `
-    <tr>
-      <td>${row.date}</td>
-      <td>Shop ${row.shop}</td>
-      <td>Product genre ${row.genre}</td>
-      <td>${yen.format(row.sales)}</td>
-      <td>${whole.format(row.units)}</td>
-      <td>${whole.format(row.pageViews)}</td>
-      <td>${whole.format(row.visitors)}</td>
-      <td>${row.avgRating === null ? "-" : row.avgRating.toFixed(2)}</td>
-    </tr>
-  `).join("");
-}
-
 function renderEvents(date) {
   if (!date) {
     els.eventCount.textContent = "Choose a day";
@@ -501,20 +471,6 @@ function renderEvents(date) {
   els.eventList.innerHTML = matches.length
     ? matches.map((event) => `<span class="event-chip">${event.name}</span>`).join("")
     : `<div class="empty">No listed events for ${date}.</div>`;
-}
-
-function exportCsv() {
-  const header = "date,shop,genre,sales,units,orders,page_views,visitors,carts,reviews_posted,avg_rating,review_count";
-  const body = state.filtered.map((row) => [
-    row.date, row.shop, row.genre, row.sales, row.units, row.orders, row.pageViews, row.visitors,
-    row.carts, row.reviewsPosted, row.avgRating ?? "", row.reviewCount
-  ].join(","));
-  const blob = new Blob([[header, ...body].join("\n")], { type: "text/csv;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "tenki-sales-search-results.csv";
-  link.click();
-  URL.revokeObjectURL(link.href);
 }
 
 async function init() {
@@ -538,7 +494,7 @@ async function init() {
     await update();
   } catch (error) {
     els.loadStatus.textContent = "Could not load data files";
-    els.resultsBody.innerHTML = `<tr><td colspan="9">Open this site through a local web server so the CSV files can load.</td></tr>`;
+    els.topItemsBody.innerHTML = `<tr><td colspan="6">Open this site through a local web server so the CSV files can load.</td></tr>`;
     console.error(error);
   }
 }
@@ -582,7 +538,5 @@ els.resetButton.addEventListener("click", () => {
   resetFilters();
   update();
 });
-
-els.exportButton.addEventListener("click", exportCsv);
 
 init();
