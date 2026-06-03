@@ -132,7 +132,7 @@ function refreshDayOptions(keepValue = true) {
   els.daySelect.value = days.includes(oldValue) ? oldValue : days[0] || "";
 }
 
-function refreshCompareMonthOptions(keepValue = true) {
+function refreshCompareMonthOptions(keepValue = true, chooseFirst = false) {
   const oldValue = keepValue ? els.compareMonthSelect.value : "";
   const year = els.compareYearSelect.value;
   const months = [...new Set(state.dates
@@ -147,13 +147,20 @@ function refreshCompareMonthOptions(keepValue = true) {
     option.textContent = month;
     els.compareMonthSelect.appendChild(option);
   });
-  els.compareMonthSelect.value = months.includes(oldValue) ? oldValue : months[0] || "";
+  els.compareMonthSelect.value = months.includes(oldValue) ? oldValue : (chooseFirst ? months[0] || "" : "");
 }
 
-function refreshCompareDayOptions(keepValue = true) {
+function refreshCompareDayOptions(keepValue = true, chooseFirst = false) {
   const oldValue = keepValue ? els.compareDaySelect.value : "";
   const year = els.compareYearSelect.value;
   const month = els.compareMonthSelect.value;
+  if (!year || !month) {
+    els.compareDaySelect.innerHTML = `<option value="">Day</option>`;
+    els.compareDaySelect.value = "";
+    els.compareDaySelect.selectedIndex = 0;
+    return;
+  }
+
   const prefix = year && month ? `${year}-${month}-` : "";
   const days = [...new Set(state.dates
     .filter((date) => !prefix || date.startsWith(prefix))
@@ -167,7 +174,7 @@ function refreshCompareDayOptions(keepValue = true) {
     option.textContent = day;
     els.compareDaySelect.appendChild(option);
   });
-  els.compareDaySelect.value = days.includes(oldValue) ? oldValue : days[0] || "";
+  els.compareDaySelect.value = days.includes(oldValue) ? oldValue : (chooseFirst ? days[0] || "" : "");
 }
 
 function setDateParts(date) {
