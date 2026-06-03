@@ -176,8 +176,13 @@ function refreshCompareDayOptions(keepValue = true) {
 function setDateParts(date) {
   if (!date || !state.availableDates.has(date)) {
     els.yearSelect.value = "";
+    els.yearSelect.selectedIndex = 0;
     els.monthSelect.innerHTML = `<option value="">Month</option>`;
+    els.monthSelect.value = "";
+    els.monthSelect.selectedIndex = 0;
     els.daySelect.innerHTML = `<option value="">Day</option>`;
+    els.daySelect.value = "";
+    els.daySelect.selectedIndex = 0;
     return;
   }
 
@@ -192,8 +197,13 @@ function setDateParts(date) {
 function setCompareDateParts(date) {
   if (!date || !state.availableDates.has(date)) {
     els.compareYearSelect.value = "";
+    els.compareYearSelect.selectedIndex = 0;
     els.compareMonthSelect.innerHTML = `<option value="">Month</option>`;
+    els.compareMonthSelect.value = "";
+    els.compareMonthSelect.selectedIndex = 0;
     els.compareDaySelect.innerHTML = `<option value="">Day</option>`;
+    els.compareDaySelect.value = "";
+    els.compareDaySelect.selectedIndex = 0;
     return;
   }
 
