@@ -159,6 +159,10 @@ input:disabled {
   overflow: hidden;
 }
 
+.workspace .panel + .panel {
+  margin-top: 16px;
+}
+
 .panel-heading {
   display: flex;
   align-items: center;
@@ -192,7 +196,9 @@ td:first-child,
 th:nth-child(2),
 td:nth-child(2),
 th:nth-child(3),
-td:nth-child(3) {
+td:nth-child(3),
+.top-items-panel th:nth-child(4),
+.top-items-panel td:nth-child(4) {
   text-align: left;
 }
 

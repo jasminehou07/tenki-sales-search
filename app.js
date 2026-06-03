@@ -1,12 +1,14 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
 const BY_DATE_URL = "data/by-date";
+const ITEMS_BY_DATE_URL = "data/items-by-date";
 
 const state = {
   rows: [],
   filtered: [],
   events: [],
   loadedDates: new Map(),
+  loadedItemDates: new Map(),
   byDate: new Map(),
   byShop: new Map(),
   byGenre: new Map()
@@ -26,6 +28,8 @@ const els = {
   unitsMetric: document.getElementById("unitsMetric"),
   resultCount: document.getElementById("resultCount"),
   resultsBody: document.getElementById("resultsBody"),
+  topItemsBody: document.getElementById("topItemsBody"),
+  topItemsCount: document.getElementById("topItemsCount"),
   eventList: document.getElementById("eventList"),
   eventCount: document.getElementById("eventCount")
 };
@@ -139,6 +143,17 @@ function rowFromCsv(row) {
   };
 }
 
+function itemFromCsv(row) {
+  return {
+    date: row.date,
+    shop: row.shop,
+    genre: row.genre,
+    item: row.item,
+    sales: Number(row.sales) || 0,
+    units: Number(row.units) || 0
+  };
+}
+
 async function update() {
   const genre = els.genreSelect.value;
   const shop = els.shopSelect.value;
@@ -152,14 +167,20 @@ async function update() {
     return;
   }
 
-  let baseRows = await loadDate(date);
+  const [dateRows, itemRows] = await Promise.all([loadDate(date), loadItemDate(date)]);
+  let baseRows = dateRows;
+  let baseItems = itemRows;
   if (shop !== "all") baseRows = baseRows.filter((row) => row.shop === shop);
   if (genre !== "all") baseRows = baseRows.filter((row) => row.genre === genre);
   if (minSales > 0) baseRows = baseRows.filter((row) => row.sales >= minSales);
+  if (shop !== "all") baseItems = baseItems.filter((row) => row.shop === shop);
+  if (genre !== "all") baseItems = baseItems.filter((row) => row.genre === genre);
+  if (minSales > 0) baseItems = baseItems.filter((row) => row.sales >= minSales);
 
   state.filtered = baseRows;
   renderSummary(baseRows);
   renderTable(baseRows);
+  renderTopItems(baseItems);
   renderEvents(date);
 }
 
@@ -168,6 +189,8 @@ function renderEmptyState() {
   els.unitsMetric.textContent = "-";
   els.resultCount.textContent = "Choose a day";
   els.resultsBody.innerHTML = `<tr><td colspan="8">Choose a day to search daily sales.</td></tr>`;
+  els.topItemsCount.textContent = "Choose a day";
+  els.topItemsBody.innerHTML = `<tr><td colspan="6">Choose a day to see top items.</td></tr>`;
 }
 
 async function loadDate(date) {
@@ -177,6 +200,14 @@ async function loadDate(date) {
   const rows = parseCsv(text).map(rowFromCsv);
   state.loadedDates.set(date, rows);
   els.loadStatus.textContent = `${whole.format(rows.length)} records loaded for ${date}`;
+  return rows;
+}
+
+async function loadItemDate(date) {
+  if (state.loadedItemDates.has(date)) return state.loadedItemDates.get(date);
+  const text = await fetch(`${ITEMS_BY_DATE_URL}/${date}.csv`).then((response) => response.text());
+  const rows = parseCsv(text).map(itemFromCsv);
+  state.loadedItemDates.set(date, rows);
   return rows;
 }
 
@@ -190,6 +221,26 @@ function renderSummary(rows) {
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
   els.resultCount.textContent = `${whole.format(rows.length)} matching rows`;
+}
+
+function renderTopItems(rows) {
+  const topItems = [...rows].sort((a, b) => b.sales - a.sales || b.units - a.units).slice(0, 25);
+  els.topItemsCount.textContent = `${whole.format(rows.length)} sold items`;
+  if (!topItems.length) {
+    els.topItemsBody.innerHTML = `<tr><td colspan="6">No sold items found for this search.</td></tr>`;
+    return;
+  }
+
+  els.topItemsBody.innerHTML = topItems.map((row, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>Item ${row.item}</td>
+      <td>Shop ${row.shop}</td>
+      <td>Product genre ${row.genre}</td>
+      <td>${yen.format(row.sales)}</td>
+      <td>${whole.format(row.units)}</td>
+    </tr>
+  `).join("");
 }
 
 function renderTable(rows) {
