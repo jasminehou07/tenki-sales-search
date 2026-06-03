@@ -94,7 +94,7 @@ function buildDateControls(dateRows) {
   });
 }
 
-function refreshMonthOptions(keepValue = true) {
+function refreshMonthOptions(keepValue = true, chooseFirst = false) {
   const oldValue = keepValue ? els.monthSelect.value : "";
   const year = els.yearSelect.value;
   const months = [...new Set(state.dates
@@ -109,13 +109,20 @@ function refreshMonthOptions(keepValue = true) {
     option.textContent = month;
     els.monthSelect.appendChild(option);
   });
-  els.monthSelect.value = months.includes(oldValue) ? oldValue : months[0] || "";
+  els.monthSelect.value = months.includes(oldValue) ? oldValue : (chooseFirst ? months[0] || "" : "");
 }
 
-function refreshDayOptions(keepValue = true) {
+function refreshDayOptions(keepValue = true, chooseFirst = false) {
   const oldValue = keepValue ? els.daySelect.value : "";
   const year = els.yearSelect.value;
   const month = els.monthSelect.value;
+  if (!year || !month) {
+    els.daySelect.innerHTML = `<option value="">Day</option>`;
+    els.daySelect.value = "";
+    els.daySelect.selectedIndex = 0;
+    return;
+  }
+
   const prefix = year && month ? `${year}-${month}-` : "";
   const days = [...new Set(state.dates
     .filter((date) => !prefix || date.startsWith(prefix))
@@ -129,7 +136,7 @@ function refreshDayOptions(keepValue = true) {
     option.textContent = day;
     els.daySelect.appendChild(option);
   });
-  els.daySelect.value = days.includes(oldValue) ? oldValue : days[0] || "";
+  els.daySelect.value = days.includes(oldValue) ? oldValue : (chooseFirst ? days[0] || "" : "");
 }
 
 function refreshCompareMonthOptions(keepValue = true, chooseFirst = false) {
