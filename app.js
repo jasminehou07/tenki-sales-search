@@ -24,8 +24,6 @@ const els = {
   exportButton: document.getElementById("exportButton"),
   salesMetric: document.getElementById("salesMetric"),
   unitsMetric: document.getElementById("unitsMetric"),
-  ordersMetric: document.getElementById("ordersMetric"),
-  conversionMetric: document.getElementById("conversionMetric"),
   resultCount: document.getElementById("resultCount"),
   resultsBody: document.getElementById("resultsBody"),
   chart: document.getElementById("chart"),
@@ -35,7 +33,6 @@ const els = {
 
 const yen = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
 const whole = new Intl.NumberFormat("en-US");
-const pct = new Intl.NumberFormat("en-US", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -171,10 +168,8 @@ async function update() {
 function renderEmptyState() {
   els.salesMetric.textContent = "-";
   els.unitsMetric.textContent = "-";
-  els.ordersMetric.textContent = "-";
-  els.conversionMetric.textContent = "-";
   els.resultCount.textContent = "Choose a day";
-  els.resultsBody.innerHTML = `<tr><td colspan="9">Choose a day to search daily sales.</td></tr>`;
+  els.resultsBody.innerHTML = `<tr><td colspan="8">Choose a day to search daily sales.</td></tr>`;
   els.chart.innerHTML = `<div class="empty">Choose a day to show sales.</div>`;
 }
 
@@ -192,22 +187,18 @@ function renderSummary(rows) {
   const totals = rows.reduce((acc, row) => {
     acc.sales += row.sales;
     acc.units += row.units;
-    acc.orders += row.orders;
-    acc.pageViews += row.pageViews;
     return acc;
-  }, { sales: 0, units: 0, orders: 0, pageViews: 0 });
+  }, { sales: 0, units: 0 });
 
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
-  els.ordersMetric.textContent = whole.format(totals.orders);
-  els.conversionMetric.textContent = totals.pageViews ? pct.format(totals.orders / totals.pageViews) : "-";
   els.resultCount.textContent = `${whole.format(rows.length)} matching rows`;
 }
 
 function renderTable(rows) {
   const topRows = [...rows].sort((a, b) => b.sales - a.sales).slice(0, 250);
   if (!topRows.length) {
-    els.resultsBody.innerHTML = `<tr><td colspan="9">No matching sales found.</td></tr>`;
+    els.resultsBody.innerHTML = `<tr><td colspan="8">No matching sales found.</td></tr>`;
     return;
   }
 
@@ -218,7 +209,6 @@ function renderTable(rows) {
       <td>Product genre ${row.genre}</td>
       <td>${yen.format(row.sales)}</td>
       <td>${whole.format(row.units)}</td>
-      <td>${whole.format(row.orders)}</td>
       <td>${whole.format(row.pageViews)}</td>
       <td>${whole.format(row.visitors)}</td>
       <td>${row.avgRating === null ? "-" : row.avgRating.toFixed(2)}</td>
