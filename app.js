@@ -119,11 +119,28 @@ function refreshDayOptions(keepValue = true) {
 }
 
 function setDateParts(date) {
-  els.yearSelect.value = date.slice(0, 4);
+  if (!date || !state.availableDates.has(date)) {
+    els.yearSelect.value = "";
+    refreshMonthOptions(false);
+    els.monthSelect.value = "";
+    refreshDayOptions(false);
+    els.daySelect.value = "";
+    return;
+  }
+
+  const [year, month, day] = date.split("-");
+  els.yearSelect.value = year;
   refreshMonthOptions(false);
-  els.monthSelect.value = date.slice(5, 7);
+  els.monthSelect.value = month;
   refreshDayOptions(false);
-  els.daySelect.value = date.slice(8, 10);
+  els.daySelect.value = day;
+}
+
+function resetFilters() {
+  els.genreSelect.value = "all";
+  els.shopSelect.value = "all";
+  els.minSalesInput.value = "";
+  setDateParts(state.dates[0] || "");
 }
 
 function rowFromCsv(row) {
@@ -335,10 +352,7 @@ els.monthSelect.addEventListener("input", () => {
 els.daySelect.addEventListener("input", () => update());
 
 els.resetButton.addEventListener("click", () => {
-  els.genreSelect.value = "all";
-  els.shopSelect.value = "all";
-  setDateParts(state.dates[0] || "");
-  els.minSalesInput.value = "";
+  resetFilters();
   update();
 });
 
