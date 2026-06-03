@@ -151,9 +151,7 @@ input:disabled {
 }
 
 .workspace {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(460px, 1.4fr);
-  gap: 16px;
+  display: block;
 }
 
 .panel {
@@ -168,38 +166,6 @@ input:disabled {
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
-}
-
-.chart {
-  display: flex;
-  align-items: end;
-  gap: 5px;
-  min-height: 300px;
-  padding: 18px 16px 14px;
-  overflow-x: auto;
-}
-
-.bar {
-  position: relative;
-  flex: 1 0 16px;
-  min-width: 16px;
-  border-radius: 4px 4px 0 0;
-  background: var(--accent);
-}
-
-.bar:nth-child(5n) {
-  background: var(--gold);
-}
-
-.bar span {
-  position: absolute;
-  left: 50%;
-  bottom: -18px;
-  transform: translateX(-50%) rotate(-45deg);
-  transform-origin: top left;
-  color: var(--muted);
-  font-size: 10px;
-  white-space: nowrap;
 }
 
 .table-wrap {

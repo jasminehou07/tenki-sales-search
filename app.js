@@ -26,7 +26,6 @@ const els = {
   unitsMetric: document.getElementById("unitsMetric"),
   resultCount: document.getElementById("resultCount"),
   resultsBody: document.getElementById("resultsBody"),
-  chart: document.getElementById("chart"),
   eventList: document.getElementById("eventList"),
   eventCount: document.getElementById("eventCount")
 };
@@ -161,7 +160,6 @@ async function update() {
   state.filtered = baseRows;
   renderSummary(baseRows);
   renderTable(baseRows);
-  renderChart(baseRows);
   renderEvents(date);
 }
 
@@ -170,7 +168,6 @@ function renderEmptyState() {
   els.unitsMetric.textContent = "-";
   els.resultCount.textContent = "Choose a day";
   els.resultsBody.innerHTML = `<tr><td colspan="8">Choose a day to search daily sales.</td></tr>`;
-  els.chart.innerHTML = `<div class="empty">Choose a day to show sales.</div>`;
 }
 
 async function loadDate(date) {
@@ -214,23 +211,6 @@ function renderTable(rows) {
       <td>${row.avgRating === null ? "-" : row.avgRating.toFixed(2)}</td>
     </tr>
   `).join("");
-}
-
-function renderChart(rows) {
-  const daily = new Map();
-  rows.forEach((row) => daily.set(row.date, (daily.get(row.date) || 0) + row.sales));
-  const points = [...daily.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-60);
-  const max = Math.max(1, ...points.map(([, sales]) => sales));
-
-  if (!points.length) {
-    els.chart.innerHTML = `<div class="empty">No chart data for this search.</div>`;
-    return;
-  }
-
-  els.chart.innerHTML = points.map(([date, sales]) => {
-    const height = Math.max(8, Math.round((sales / max) * 260));
-    return `<div class="bar" style="height:${height}px" title="${date}: ${yen.format(sales)}"><span>${date.slice(5)}</span></div>`;
-  }).join("");
 }
 
 function renderEvents(date) {
