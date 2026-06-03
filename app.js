@@ -219,8 +219,8 @@ function resetFilters() {
   els.genreSelect.value = "all";
   els.shopSelect.value = "all";
   els.minSalesInput.value = "";
-  setDateParts(state.dates[0] || "");
-  setCompareDateParts(nearestComparisonDate(selectedDate()));
+  setDateParts("");
+  setCompareDateParts("");
 }
 
 function keepComparisonDateDifferent() {
