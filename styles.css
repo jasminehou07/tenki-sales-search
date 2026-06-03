@@ -182,6 +182,78 @@ input:disabled {
   max-height: 280px;
 }
 
+.day-compare-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+.compare-day-card,
+.change-summary {
+  border: 1px solid #edf0f4;
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.compare-day-card {
+  display: grid;
+  gap: 5px;
+}
+
+.compare-day-card span,
+.change-line span,
+.compare-day-card small,
+.change-line small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compare-day-card strong {
+  font-size: 13px;
+}
+
+.compare-day-card div {
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.selected-day {
+  border-color: #9dd5ce;
+  background: #f1fbf9;
+}
+
+.change-summary {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+}
+
+.change-line {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.change-line strong {
+  font-size: 15px;
+}
+
+.change-line.positive strong {
+  color: var(--accent-strong);
+}
+
+.change-line.negative strong {
+  color: var(--danger);
+}
+
+.change-line.neutral strong {
+  color: var(--muted);
+}
+
 .workspace {
   display: block;
 }
@@ -303,6 +375,11 @@ thead th {
 
 @media (max-width: 700px) {
   .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-compare-summary,
+  .change-line {
     grid-template-columns: 1fr;
   }
 }

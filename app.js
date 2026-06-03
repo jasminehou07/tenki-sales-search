@@ -304,7 +304,7 @@ function renderEmptyState() {
   els.shopCompareCount.textContent = "Choose a day";
   els.shopCompareBody.innerHTML = `<tr><td colspan="5">Choose a day to compare shops.</td></tr>`;
   els.dayCompareStatus.textContent = "Choose a day";
-  els.dayCompareBody.innerHTML = `<tr><td colspan="5">Choose a day to compare sales by date.</td></tr>`;
+  els.dayCompareBody.innerHTML = `<div class="empty">Choose a day to compare sales by date.</div>`;
   els.resultCount.textContent = "Choose a day";
   els.resultsBody.innerHTML = `<tr><td colspan="8">Choose a day to search daily sales.</td></tr>`;
   els.topItemsCount.textContent = "Choose a day";
@@ -408,32 +408,63 @@ function formatChange(current, comparison, formatter) {
   return `${sign}${formatter.format(difference)}`;
 }
 
+function formatPercentChange(current, comparison) {
+  if (!comparison) return current ? "+100%" : "0%";
+  const percent = ((current - comparison) / comparison) * 100;
+  const sign = percent > 0 ? "+" : "";
+  return `${sign}${percent.toFixed(1)}%`;
+}
+
+function changeTone(current, comparison) {
+  if (current > comparison) return "positive";
+  if (current < comparison) return "negative";
+  return "neutral";
+}
+
+function changeLabel(current, comparison) {
+  if (current > comparison) return "Higher";
+  if (current < comparison) return "Lower";
+  return "Same";
+}
+
 function renderDayComparison(currentRows, compareRows, date, compareDate) {
   if (!compareDate || !state.availableDates.has(compareDate)) {
     els.dayCompareStatus.textContent = "Choose another day";
-    els.dayCompareBody.innerHTML = `<tr><td colspan="5">Choose another day to compare against ${date}.</td></tr>`;
+    els.dayCompareBody.innerHTML = `<div class="empty">Choose another day to compare against ${date}.</div>`;
     return;
   }
 
   const current = totalsFor(currentRows);
   const comparison = totalsFor(compareRows);
+  const salesTone = changeTone(current.sales, comparison.sales);
+  const unitsTone = changeTone(current.units, comparison.units);
   els.dayCompareStatus.textContent = `${date} vs ${compareDate}`;
 
   els.dayCompareBody.innerHTML = `
-    <tr>
-      <td>${date}</td>
-      <td>${yen.format(current.sales)}</td>
-      <td>${whole.format(current.units)}</td>
-      <td>${formatChange(current.sales, comparison.sales, yen)}</td>
-      <td>${formatChange(current.units, comparison.units, whole)}</td>
-    </tr>
-    <tr>
-      <td>${compareDate}</td>
-      <td>${yen.format(comparison.sales)}</td>
-      <td>${whole.format(comparison.units)}</td>
-      <td>Baseline</td>
-      <td>Baseline</td>
-    </tr>
+    <div class="compare-day-card selected-day">
+      <span>Selected day</span>
+      <strong>${date}</strong>
+      <div>${yen.format(current.sales)}</div>
+      <small>${whole.format(current.units)} units</small>
+    </div>
+    <div class="compare-day-card">
+      <span>Comparison day</span>
+      <strong>${compareDate}</strong>
+      <div>${yen.format(comparison.sales)}</div>
+      <small>${whole.format(comparison.units)} units</small>
+    </div>
+    <div class="change-summary">
+      <div class="change-line ${salesTone}">
+        <span>Sales</span>
+        <strong>${changeLabel(current.sales, comparison.sales)} by ${formatChange(current.sales, comparison.sales, yen)}</strong>
+        <small>${formatPercentChange(current.sales, comparison.sales)} vs comparison day</small>
+      </div>
+      <div class="change-line ${unitsTone}">
+        <span>Units</span>
+        <strong>${changeLabel(current.units, comparison.units)} by ${formatChange(current.units, comparison.units, whole)}</strong>
+        <small>${formatPercentChange(current.units, comparison.units)} vs comparison day</small>
+      </div>
+    </div>
   `;
 }
 
