@@ -150,6 +150,38 @@ input:disabled {
   line-height: 1.1;
 }
 
+.comparison-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.compare-heading {
+  align-items: start;
+}
+
+.compare-heading > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.compare-date-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(76px, 1fr));
+  gap: 8px;
+  min-width: min(330px, 48%);
+}
+
+.compare-date-controls select {
+  min-height: 34px;
+  font-size: 13px;
+}
+
+.compare-wrap {
+  max-height: 280px;
+}
+
 .workspace {
   display: block;
 }
@@ -250,12 +282,28 @@ thead th {
   }
 
   .filters,
-  .metrics {
+  .metrics,
+  .comparison-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compare-heading {
+    display: grid;
+  }
+
+  .compare-date-controls {
+    min-width: 0;
+    width: 100%;
   }
 
   .panel {
     margin-top: 16px;
+  }
+}
+
+@media (max-width: 700px) {
+  .comparison-grid {
+    grid-template-columns: 1fr;
   }
 }
 

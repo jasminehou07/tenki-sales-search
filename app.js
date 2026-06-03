@@ -21,11 +21,18 @@ const els = {
   yearSelect: document.getElementById("yearSelect"),
   monthSelect: document.getElementById("monthSelect"),
   daySelect: document.getElementById("daySelect"),
+  compareYearSelect: document.getElementById("compareYearSelect"),
+  compareMonthSelect: document.getElementById("compareMonthSelect"),
+  compareDaySelect: document.getElementById("compareDaySelect"),
   minSalesInput: document.getElementById("minSalesInput"),
   resetButton: document.getElementById("resetButton"),
   exportButton: document.getElementById("exportButton"),
   salesMetric: document.getElementById("salesMetric"),
   unitsMetric: document.getElementById("unitsMetric"),
+  shopCompareBody: document.getElementById("shopCompareBody"),
+  shopCompareCount: document.getElementById("shopCompareCount"),
+  dayCompareBody: document.getElementById("dayCompareBody"),
+  dayCompareStatus: document.getElementById("dayCompareStatus"),
   resultCount: document.getElementById("resultCount"),
   resultsBody: document.getElementById("resultsBody"),
   topItemsBody: document.getElementById("topItemsBody"),
@@ -56,7 +63,11 @@ function addOptions(select, rows) {
 }
 
 function setEnabled(enabled) {
-  [els.genreSelect, els.shopSelect, els.yearSelect, els.monthSelect, els.daySelect, els.minSalesInput, els.resetButton, els.exportButton].forEach((el) => {
+  [
+    els.genreSelect, els.shopSelect, els.yearSelect, els.monthSelect, els.daySelect,
+    els.compareYearSelect, els.compareMonthSelect, els.compareDaySelect,
+    els.minSalesInput, els.resetButton, els.exportButton
+  ].forEach((el) => {
     el.disabled = !enabled;
   });
 }
@@ -66,17 +77,24 @@ function selectedDate() {
   return `${els.yearSelect.value}-${els.monthSelect.value}-${els.daySelect.value}`;
 }
 
+function selectedCompareDate() {
+  if (!els.compareYearSelect.value || !els.compareMonthSelect.value || !els.compareDaySelect.value) return "";
+  return `${els.compareYearSelect.value}-${els.compareMonthSelect.value}-${els.compareDaySelect.value}`;
+}
+
 function buildDateControls(dateRows) {
   state.dates = dateRows.map((row) => row.id).sort((a, b) => b.localeCompare(a));
   state.availableDates = new Set(state.dates);
   const years = [...new Set(state.dates.map((date) => date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
 
   els.yearSelect.innerHTML = `<option value="">Year</option>`;
+  els.compareYearSelect.innerHTML = `<option value="">Year</option>`;
   years.forEach((year) => {
     const option = document.createElement("option");
     option.value = year;
     option.textContent = year;
     els.yearSelect.appendChild(option);
+    els.compareYearSelect.appendChild(option.cloneNode(true));
   });
 }
 
@@ -118,6 +136,44 @@ function refreshDayOptions(keepValue = true) {
   els.daySelect.value = days.includes(oldValue) ? oldValue : days[0] || "";
 }
 
+function refreshCompareMonthOptions(keepValue = true) {
+  const oldValue = keepValue ? els.compareMonthSelect.value : "";
+  const year = els.compareYearSelect.value;
+  const months = [...new Set(state.dates
+    .filter((date) => !year || date.startsWith(`${year}-`))
+    .map((date) => date.slice(5, 7)))]
+    .sort((a, b) => Number(b) - Number(a));
+
+  els.compareMonthSelect.innerHTML = `<option value="">Month</option>`;
+  months.forEach((month) => {
+    const option = document.createElement("option");
+    option.value = month;
+    option.textContent = month;
+    els.compareMonthSelect.appendChild(option);
+  });
+  els.compareMonthSelect.value = months.includes(oldValue) ? oldValue : months[0] || "";
+}
+
+function refreshCompareDayOptions(keepValue = true) {
+  const oldValue = keepValue ? els.compareDaySelect.value : "";
+  const year = els.compareYearSelect.value;
+  const month = els.compareMonthSelect.value;
+  const prefix = year && month ? `${year}-${month}-` : "";
+  const days = [...new Set(state.dates
+    .filter((date) => !prefix || date.startsWith(prefix))
+    .map((date) => date.slice(8, 10)))]
+    .sort((a, b) => Number(b) - Number(a));
+
+  els.compareDaySelect.innerHTML = `<option value="">Day</option>`;
+  days.forEach((day) => {
+    const option = document.createElement("option");
+    option.value = day;
+    option.textContent = day;
+    els.compareDaySelect.appendChild(option);
+  });
+  els.compareDaySelect.value = days.includes(oldValue) ? oldValue : days[0] || "";
+}
+
 function setDateParts(date) {
   if (!date || !state.availableDates.has(date)) {
     els.yearSelect.value = "";
@@ -136,11 +192,41 @@ function setDateParts(date) {
   els.daySelect.value = day;
 }
 
+function setCompareDateParts(date) {
+  if (!date || !state.availableDates.has(date)) {
+    els.compareYearSelect.value = "";
+    refreshCompareMonthOptions(false);
+    els.compareMonthSelect.value = "";
+    refreshCompareDayOptions(false);
+    els.compareDaySelect.value = "";
+    return;
+  }
+
+  const [year, month, day] = date.split("-");
+  els.compareYearSelect.value = year;
+  refreshCompareMonthOptions(false);
+  els.compareMonthSelect.value = month;
+  refreshCompareDayOptions(false);
+  els.compareDaySelect.value = day;
+}
+
+function nearestComparisonDate(date) {
+  if (!state.dates.length) return "";
+  return state.dates.find((availableDate) => availableDate !== date) || state.dates[0];
+}
+
 function resetFilters() {
   els.genreSelect.value = "all";
   els.shopSelect.value = "all";
   els.minSalesInput.value = "";
   setDateParts(state.dates[0] || "");
+  setCompareDateParts(nearestComparisonDate(selectedDate()));
+}
+
+function keepComparisonDateDifferent() {
+  if (selectedCompareDate() === selectedDate()) {
+    setCompareDateParts(nearestComparisonDate(selectedDate()));
+  }
 }
 
 function rowFromCsv(row) {
@@ -175,6 +261,7 @@ async function update() {
   const genre = els.genreSelect.value;
   const shop = els.shopSelect.value;
   const date = selectedDate();
+  const compareDate = selectedCompareDate();
   const minSales = Number(els.minSalesInput.value) || 0;
 
   if (!date || !state.availableDates.has(date)) {
@@ -185,25 +272,37 @@ async function update() {
   }
 
   const [dateRows, itemRows] = await Promise.all([loadDate(date), loadItemDate(date)]);
-  let baseRows = dateRows;
-  let baseItems = itemRows;
-  if (shop !== "all") baseRows = baseRows.filter((row) => row.shop === shop);
-  if (genre !== "all") baseRows = baseRows.filter((row) => row.genre === genre);
-  if (minSales > 0) baseRows = baseRows.filter((row) => row.sales >= minSales);
-  if (shop !== "all") baseItems = baseItems.filter((row) => row.shop === shop);
-  if (genre !== "all") baseItems = baseItems.filter((row) => row.genre === genre);
-  if (minSales > 0) baseItems = baseItems.filter((row) => row.sales >= minSales);
+  const baseRows = filterRows(dateRows, { genre, shop, minSales });
+  const baseItems = filterRows(itemRows, { genre, shop, minSales });
+  const compareRows = compareDate && state.availableDates.has(compareDate)
+    ? filterRows(await loadDate(compareDate), { genre, shop, minSales })
+    : [];
 
   state.filtered = baseRows;
   renderSummary(baseRows);
+  renderShopComparison(baseRows);
+  renderDayComparison(baseRows, compareRows, date, compareDate);
   renderTable(baseRows);
   renderTopItems(baseItems);
   renderEvents(date);
 }
 
+function filterRows(rows, filters) {
+  return rows.filter((row) => {
+    if (filters.shop !== "all" && row.shop !== filters.shop) return false;
+    if (filters.genre !== "all" && row.genre !== filters.genre) return false;
+    if (filters.minSales > 0 && row.sales < filters.minSales) return false;
+    return true;
+  });
+}
+
 function renderEmptyState() {
   els.salesMetric.textContent = "-";
   els.unitsMetric.textContent = "-";
+  els.shopCompareCount.textContent = "Choose a day";
+  els.shopCompareBody.innerHTML = `<tr><td colspan="5">Choose a day to compare shops.</td></tr>`;
+  els.dayCompareStatus.textContent = "Choose a day";
+  els.dayCompareBody.innerHTML = `<tr><td colspan="5">Choose a day to compare sales by date.</td></tr>`;
   els.resultCount.textContent = "Choose a day";
   els.resultsBody.innerHTML = `<tr><td colspan="8">Choose a day to search daily sales.</td></tr>`;
   els.topItemsCount.textContent = "Choose a day";
@@ -258,6 +357,82 @@ function renderTopItems(rows) {
       <td>${whole.format(row.units)}</td>
     </tr>
   `).join("");
+}
+
+function totalsFor(rows) {
+  return rows.reduce((acc, row) => {
+    acc.sales += row.sales;
+    acc.units += row.units;
+    return acc;
+  }, { sales: 0, units: 0 });
+}
+
+function renderShopComparison(rows) {
+  const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
+  const shops = new Map();
+
+  rows.forEach((row) => {
+    const current = shops.get(row.shop) || { shop: row.shop, sales: 0, units: 0 };
+    current.sales += row.sales;
+    current.units += row.units;
+    shops.set(row.shop, current);
+  });
+
+  const ranked = [...shops.values()].sort((a, b) => b.sales - a.sales || b.units - a.units).slice(0, 20);
+  els.shopCompareCount.textContent = `${whole.format(shops.size)} shops`;
+
+  if (!ranked.length) {
+    els.shopCompareBody.innerHTML = `<tr><td colspan="5">No shops found for this search.</td></tr>`;
+    return;
+  }
+
+  els.shopCompareBody.innerHTML = ranked.map((row, index) => {
+    const share = totalSales ? `${((row.sales / totalSales) * 100).toFixed(1)}%` : "-";
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>Shop ${row.shop}</td>
+        <td>${yen.format(row.sales)}</td>
+        <td>${whole.format(row.units)}</td>
+        <td>${share}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function formatChange(current, comparison, formatter) {
+  const difference = current - comparison;
+  const sign = difference > 0 ? "+" : "";
+  return `${sign}${formatter.format(difference)}`;
+}
+
+function renderDayComparison(currentRows, compareRows, date, compareDate) {
+  if (!compareDate || !state.availableDates.has(compareDate)) {
+    els.dayCompareStatus.textContent = "Choose another day";
+    els.dayCompareBody.innerHTML = `<tr><td colspan="5">Choose another day to compare against ${date}.</td></tr>`;
+    return;
+  }
+
+  const current = totalsFor(currentRows);
+  const comparison = totalsFor(compareRows);
+  els.dayCompareStatus.textContent = `${date} vs ${compareDate}`;
+
+  els.dayCompareBody.innerHTML = `
+    <tr>
+      <td>${date}</td>
+      <td>${yen.format(current.sales)}</td>
+      <td>${whole.format(current.units)}</td>
+      <td>${formatChange(current.sales, comparison.sales, yen)}</td>
+      <td>${formatChange(current.units, comparison.units, whole)}</td>
+    </tr>
+    <tr>
+      <td>${compareDate}</td>
+      <td>${yen.format(comparison.sales)}</td>
+      <td>${whole.format(comparison.units)}</td>
+      <td>Baseline</td>
+      <td>Baseline</td>
+    </tr>
+  `;
 }
 
 function renderTable(rows) {
@@ -324,6 +499,7 @@ async function init() {
 
     state.events = parseCsv(eventsText);
     setDateParts(state.dates[0] || "");
+    setCompareDateParts(nearestComparisonDate(selectedDate()));
     els.loadStatus.textContent = "Ready";
     setEnabled(true);
     await update();
@@ -341,15 +517,33 @@ async function init() {
 els.yearSelect.addEventListener("input", () => {
   refreshMonthOptions(false);
   refreshDayOptions(false);
+  keepComparisonDateDifferent();
   update();
 });
 
 els.monthSelect.addEventListener("input", () => {
   refreshDayOptions(false);
+  keepComparisonDateDifferent();
   update();
 });
 
-els.daySelect.addEventListener("input", () => update());
+els.daySelect.addEventListener("input", () => {
+  keepComparisonDateDifferent();
+  update();
+});
+
+els.compareYearSelect.addEventListener("input", () => {
+  refreshCompareMonthOptions(false);
+  refreshCompareDayOptions(false);
+  update();
+});
+
+els.compareMonthSelect.addEventListener("input", () => {
+  refreshCompareDayOptions(false);
+  update();
+});
+
+els.compareDaySelect.addEventListener("input", () => update());
 
 els.resetButton.addEventListener("click", () => {
   resetFilters();

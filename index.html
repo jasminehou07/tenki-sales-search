@@ -65,6 +65,67 @@
       </article>
     </section>
 
+    <section class="comparison-grid" aria-label="Sales comparisons">
+      <div class="panel">
+        <div class="panel-heading">
+          <h2>Compare Shops</h2>
+          <span id="shopCompareCount">0 shops</span>
+        </div>
+        <div class="table-wrap compare-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Shop</th>
+                <th>Sales</th>
+                <th>Units</th>
+                <th>Share</th>
+              </tr>
+            </thead>
+            <tbody id="shopCompareBody">
+              <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-heading compare-heading">
+          <div>
+            <h2>Compare With Another Day</h2>
+            <span id="dayCompareStatus">Choose another day</span>
+          </div>
+          <div class="compare-date-controls" aria-label="Comparison date">
+            <select id="compareYearSelect" disabled>
+              <option value="">Year</option>
+            </select>
+            <select id="compareMonthSelect" disabled>
+              <option value="">Month</option>
+            </select>
+            <select id="compareDaySelect" disabled>
+              <option value="">Day</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap compare-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Sales</th>
+                <th>Units</th>
+                <th>Sales change</th>
+                <th>Units change</th>
+              </tr>
+            </thead>
+            <tbody id="dayCompareBody">
+              <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="workspace">
       <div class="panel">
         <div class="panel-heading">
