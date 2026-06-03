@@ -69,7 +69,7 @@ main {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+  grid-template-columns: repeat(5, minmax(120px, 1fr)) auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 16px;

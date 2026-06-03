@@ -24,7 +24,6 @@ const els = {
   compareYearSelect: document.getElementById("compareYearSelect"),
   compareMonthSelect: document.getElementById("compareMonthSelect"),
   compareDaySelect: document.getElementById("compareDaySelect"),
-  minSalesInput: document.getElementById("minSalesInput"),
   resetButton: document.getElementById("resetButton"),
   exportButton: document.getElementById("exportButton"),
   salesMetric: document.getElementById("salesMetric"),
@@ -66,7 +65,7 @@ function setEnabled(enabled) {
   [
     els.genreSelect, els.shopSelect, els.yearSelect, els.monthSelect, els.daySelect,
     els.compareYearSelect, els.compareMonthSelect, els.compareDaySelect,
-    els.minSalesInput, els.resetButton, els.exportButton
+    els.resetButton, els.exportButton
   ].forEach((el) => {
     el.disabled = !enabled;
   });
@@ -214,7 +213,6 @@ function nearestComparisonDate(date) {
 function resetFilters() {
   els.genreSelect.value = "all";
   els.shopSelect.value = "all";
-  els.minSalesInput.value = "";
   setDateParts("");
   setCompareDateParts("");
 }
@@ -258,7 +256,6 @@ async function update() {
   const shop = els.shopSelect.value;
   const date = selectedDate();
   const compareDate = selectedCompareDate();
-  const minSales = Number(els.minSalesInput.value) || 0;
 
   if (!date || !state.availableDates.has(date)) {
     state.filtered = [];
@@ -268,10 +265,10 @@ async function update() {
   }
 
   const [dateRows, itemRows] = await Promise.all([loadDate(date), loadItemDate(date)]);
-  const baseRows = filterRows(dateRows, { genre, shop, minSales });
-  const baseItems = filterRows(itemRows, { genre, shop, minSales });
+  const baseRows = filterRows(dateRows, { genre, shop });
+  const baseItems = filterRows(itemRows, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
-    ? filterRows(await loadDate(compareDate), { genre, shop, minSales })
+    ? filterRows(await loadDate(compareDate), { genre, shop })
     : [];
 
   state.filtered = baseRows;
@@ -287,7 +284,6 @@ function filterRows(rows, filters) {
   return rows.filter((row) => {
     if (filters.shop !== "all" && row.shop !== filters.shop) return false;
     if (filters.genre !== "all" && row.genre !== filters.genre) return false;
-    if (filters.minSales > 0 && row.sales < filters.minSales) return false;
     return true;
   });
 }
@@ -506,7 +502,7 @@ async function init() {
   }
 }
 
-[els.genreSelect, els.shopSelect, els.minSalesInput].forEach((el) => {
+[els.genreSelect, els.shopSelect].forEach((el) => {
   el.addEventListener("input", () => update());
 });
 
