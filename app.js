@@ -1,14 +1,14 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
-const BY_DATE_URL = "data/by-date";
-const ITEMS_BY_DATE_URL = "data/items-by-date";
+const BY_MONTH_URL = "data/by-month";
+const ITEMS_BY_MONTH_URL = "data/items-by-month";
 
 const state = {
   rows: [],
   filtered: [],
   events: [],
-  loadedDates: new Map(),
-  loadedItemDates: new Map(),
+  loadedMonths: new Map(),
+  loadedItemMonths: new Map(),
   genreLabels: new Map(),
   byDate: new Map(),
   byShop: new Map(),
@@ -390,16 +390,18 @@ function periodLabel(dates) {
 }
 
 async function loadPeriodDates(dates) {
-  if (dates.length > 1) {
-    els.loadStatus.textContent = `Loading ${whole.format(dates.length)} days...`;
-  }
-  const rowSets = await Promise.all(dates.map((date) => loadDate(date)));
-  return rowSets.flat();
+  const dateSet = new Set(dates);
+  const months = monthsForDates(dates);
+  els.loadStatus.textContent = `Loading ${whole.format(months.length)} month file${months.length === 1 ? "" : "s"}...`;
+  const rowSets = await Promise.all(months.map((month) => loadMonth(month)));
+  return rowSets.flat().filter((row) => dateSet.has(row.date));
 }
 
 async function loadPeriodItems(dates) {
-  const rowSets = await Promise.all(dates.map((date) => loadItemDate(date)));
-  return rowSets.flat();
+  const dateSet = new Set(dates);
+  const months = monthsForDates(dates);
+  const rowSets = await Promise.all(months.map((month) => loadItemMonth(month)));
+  return rowSets.flat().filter((row) => dateSet.has(row.date));
 }
 
 async function update() {
@@ -419,7 +421,7 @@ async function update() {
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
-    ? filterRows(await loadDate(compareDate), { genre, shop })
+    ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
   renderSummary(baseRows);
@@ -427,9 +429,9 @@ async function update() {
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
   renderEvents(periodDates);
-  if (periodDates.length > 1) {
-    els.loadStatus.textContent = `${whole.format(periodDates.length)} days loaded for ${currentLabel}`;
-  }
+  els.loadStatus.textContent = periodDates.length > 1
+    ? `${whole.format(periodDates.length)} days loaded for ${currentLabel}`
+    : `Ready for ${currentLabel}`;
 }
 
 function filterRows(rows, filters) {
@@ -452,21 +454,25 @@ function renderEmptyState() {
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
 }
 
-async function loadDate(date) {
-  if (state.loadedDates.has(date)) return state.loadedDates.get(date);
-  els.loadStatus.textContent = `Loading ${date}...`;
-  const text = await fetch(`${BY_DATE_URL}/${date}.csv`).then((response) => response.text());
+function monthsForDates(dates) {
+  return [...new Set(dates.map((date) => date.slice(0, 7)))].sort((a, b) => a.localeCompare(b));
+}
+
+async function loadMonth(month) {
+  if (state.loadedMonths.has(month)) return state.loadedMonths.get(month);
+  els.loadStatus.textContent = `Loading ${month}...`;
+  const text = await fetch(`${BY_MONTH_URL}/${month}.csv`).then((response) => response.text());
   const rows = parseCsv(text).map(rowFromCsv);
-  state.loadedDates.set(date, rows);
-  els.loadStatus.textContent = `${whole.format(rows.length)} records loaded for ${date}`;
+  state.loadedMonths.set(month, rows);
+  els.loadStatus.textContent = `${whole.format(rows.length)} records loaded for ${month}`;
   return rows;
 }
 
-async function loadItemDate(date) {
-  if (state.loadedItemDates.has(date)) return state.loadedItemDates.get(date);
-  const text = await fetch(`${ITEMS_BY_DATE_URL}/${date}.csv`).then((response) => response.text());
+async function loadItemMonth(month) {
+  if (state.loadedItemMonths.has(month)) return state.loadedItemMonths.get(month);
+  const text = await fetch(`${ITEMS_BY_MONTH_URL}/${month}.csv`).then((response) => response.text());
   const rows = parseCsv(text).map(itemFromCsv);
-  state.loadedItemDates.set(date, rows);
+  state.loadedItemMonths.set(month, rows);
   return rows;
 }
 
