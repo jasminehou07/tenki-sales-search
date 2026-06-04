@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260604-trend-date-tools">
+  <link rel="stylesheet" href="styles.css?v=20260604-date-picker">
 </head>
 <body>
   <header class="app-header">
@@ -34,68 +34,97 @@
           <option value="all">All shops</option>
         </select>
       </label>
-      <label>
-        Search type
-        <select id="dateModeSelect" disabled>
-          <option value="day">Single day</option>
-          <option value="range">Date range</option>
-        </select>
-      </label>
-      <div class="date-filter-grid">
+      <div class="date-pill-row">
+        <div class="date-picker-shell">
+          <button id="dateRangeButton" class="date-pill date-range-pill" type="button" disabled aria-expanded="false">
+            <span>Date range</span>
+            <strong id="dateRangeLabel">Latest day</strong>
+            <span class="chevron">v</span>
+          </button>
+          <div id="datePopover" class="date-popover" hidden>
+            <div class="preset-list" aria-label="Date range presets">
+              <button class="date-preset-button" type="button" data-preset="today">Latest day</button>
+              <button class="date-preset-button" type="button" data-preset="7">Last 7 days</button>
+              <button class="date-preset-button" type="button" data-preset="28">Last 4 weeks</button>
+              <button class="date-preset-button" type="button" data-preset="183">Last 6 months</button>
+              <button class="date-preset-button" type="button" data-preset="365">Last 12 months</button>
+              <button class="date-preset-button" type="button" data-preset="mtd">Month to date</button>
+              <button class="date-preset-button" type="button" data-preset="ytd">Year to date</button>
+            </div>
+            <div class="date-popover-main">
+              <div class="calendar-controls" aria-label="Calendar date selection">
+                <label>
+                  Start
+                  <input id="startDateInput" type="date" disabled>
+                </label>
+                <label>
+                  End
+                  <input id="endDateInput" type="date" disabled>
+                </label>
+              </div>
+              <div id="dateCalendarGrid" class="date-calendar-grid" aria-label="Calendar range picker"></div>
+              <div class="date-apply-row">
+                <button id="clearDateButton" type="button" disabled>Clear</button>
+                <button id="applyDateButton" class="primary-button" type="button" disabled>Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <label class="granularity-label">
+          <span class="sr-only">Trend grouping</span>
+          <select id="granularitySelect" class="date-pill granularity-select" disabled>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
+      </div>
+      <div class="legacy-date-controls" aria-hidden="true">
+        <label>
+          Search type
+          <select id="dateModeSelect" disabled tabindex="-1">
+            <option value="day">Single day</option>
+            <option value="range">Date range</option>
+          </select>
+        </label>
+      </div>
+      <div class="date-filter-grid legacy-date-controls" aria-hidden="true">
         <label>
           Year
-          <select id="yearSelect" disabled>
+          <select id="yearSelect" disabled tabindex="-1">
             <option value="">Year</option>
           </select>
         </label>
         <label>
           Month
-          <select id="monthSelect" disabled>
+          <select id="monthSelect" disabled tabindex="-1">
             <option value="">Month</option>
           </select>
         </label>
         <label>
           Day
-          <select id="daySelect" disabled>
+          <select id="daySelect" disabled tabindex="-1">
             <option value="">Day</option>
           </select>
         </label>
         <label class="range-filter">
           End year
-          <select id="endYearSelect" disabled>
+          <select id="endYearSelect" disabled tabindex="-1">
             <option value="">Year</option>
           </select>
         </label>
         <label class="range-filter">
           End month
-          <select id="endMonthSelect" disabled>
+          <select id="endMonthSelect" disabled tabindex="-1">
             <option value="">Month</option>
           </select>
         </label>
         <label class="range-filter">
           End day
-          <select id="endDaySelect" disabled>
+          <select id="endDaySelect" disabled tabindex="-1">
             <option value="">Day</option>
           </select>
         </label>
-      </div>
-      <div class="date-helper-grid">
-        <div class="quick-ranges" aria-label="Quick date ranges">
-          <button class="quick-range-button" type="button" data-range-days="1" disabled>Past 1 day</button>
-          <button class="quick-range-button" type="button" data-range-days="7" disabled>Past week</button>
-          <button class="quick-range-button" type="button" data-range-days="30" disabled>Past 30 days</button>
-          <button class="quick-range-button" type="button" data-range-days="month" disabled>Latest month</button>
-        </div>
-        <div class="calendar-controls" aria-label="Calendar date selection">
-          <label>
-            Calendar date
-            <input id="startDateInput" type="date" disabled>
-          </label>
-          <label class="range-filter">
-            End date
-            <input id="endDateInput" type="date" disabled>
-          </label>
-        </div>
       </div>
       <button id="resetButton" type="button" disabled>Reset</button>
     </section>
@@ -206,6 +235,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260604-trend-date-tools"></script>
+  <script src="app.js?v=20260604-date-picker"></script>
 </body>
 </html>
