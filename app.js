@@ -597,6 +597,37 @@ function applyDatePreset(preset, shouldUpdate = true) {
   if (shouldUpdate) update();
 }
 
+function stageCalendarDate(date) {
+  const start = selectedDate();
+  const end = selectedEndDate();
+  clearActivePreset();
+
+  if (!start || end) {
+    els.dateModeSelect.value = "day";
+    syncRangeControls();
+    setDateParts(date);
+    setEndDateParts("");
+    syncDateRangeLabel();
+    return;
+  }
+
+  if (date === start) {
+    setEndDateParts("");
+    syncDateRangeLabel();
+    return;
+  }
+
+  els.dateModeSelect.value = "range";
+  syncRangeControls();
+  if (date < start) {
+    setDateParts(date);
+    setEndDateParts(start);
+  } else {
+    setEndDateParts(date);
+  }
+  syncDateRangeLabel();
+}
+
 function nearestAvailableDate(date) {
   if (!date) return "";
   if (state.availableDates.has(date)) return date;
@@ -1063,10 +1094,9 @@ els.startDateInput.addEventListener("input", () => {
   const date = nearestAvailableDate(els.startDateInput.value);
   if (!date) return;
   setDateParts(date);
+  setEndDateParts("");
   clearActivePreset();
   syncDateRangeLabel();
-  keepComparisonDateDifferent();
-  update();
 });
 
 els.endDateInput.addEventListener("input", () => {
@@ -1079,7 +1109,6 @@ els.endDateInput.addEventListener("input", () => {
   setEndDateParts(date);
   clearActivePreset();
   syncDateRangeLabel();
-  update();
 });
 
 els.dateRangeButton.addEventListener("click", () => {
@@ -1106,23 +1135,7 @@ els.applyDateButton.addEventListener("click", () => {
 els.dateCalendarGrid.addEventListener("click", (event) => {
   const button = event.target.closest(".calendar-day");
   if (!button || button.disabled) return;
-  const date = button.dataset.date;
-  const start = selectedDate();
-  const end = selectedEndDate();
-  clearActivePreset();
-
-  if (!start || end) {
-    els.dateModeSelect.value = "day";
-    syncRangeControls();
-    setDateParts(date);
-    setEndDateParts("");
-    syncDateRangeLabel();
-    update();
-    return;
-  }
-
-  const dates = datesBetween(start, date);
-  applyPeriodDates(dates);
+  stageCalendarDate(button.dataset.date);
 });
 
 els.compareYearSelect.addEventListener("input", () => {
