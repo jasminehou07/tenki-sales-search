@@ -1,6 +1,7 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
 const ESTIMATES_URL = "data/rakuten_estimates.csv";
+const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 
@@ -9,6 +10,7 @@ const state = {
   filtered: [],
   events: [],
   estimates: [],
+  shopEstimates: [],
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
   genreLabels: new Map(),
@@ -493,7 +495,8 @@ function itemFromCsv(row) {
 function estimateFromCsv(row) {
   return {
     date: row.date,
-    genre: row.genre_id,
+    shop: row.shop || "",
+    genre: row.genre_id || row.genre,
     predictedSales: Number(row.predicted_sales) || 0
   };
 }
@@ -803,7 +806,8 @@ async function update() {
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const trendRows = filterRows(chartRows, { genre, shop });
-  const trendEstimates = filterEstimateRows(state.estimates, chartDates, { genre });
+  const estimateSource = shop === "all" ? state.estimates : state.shopEstimates;
+  const trendEstimates = filterEstimateRows(estimateSource, chartDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
@@ -832,6 +836,7 @@ function filterEstimateRows(rows, dates, filters) {
   return rows.filter((row) => {
     if (!dateSet.has(row.date)) return false;
     if (filters.genre !== "all" && row.genre !== filters.genre) return false;
+    if (filters.shop !== "all" && row.shop && row.shop !== filters.shop) return false;
     return true;
   });
 }
@@ -956,7 +961,8 @@ function renderTrendChart(rows, estimateRows, dates, label) {
       ${estimatePoints.length ? `<polyline points="${estimateLine}" class="trend-estimate-line"></polyline>` : ""}
       <polyline points="${line}" class="trend-line"></polyline>
       ${estimatePoints.map((point) => {
-        const tooltip = escapeHtml(`${point.label}\nEstimated Rakuten benchmark: ${yen.format(point.value)}\nModel-based estimate, not reported competitor sales`);
+        const estimateName = els.shopSelect.value === "all" ? "Estimated benchmark" : "Estimated shop benchmark";
+        const tooltip = escapeHtml(`${point.label}\n${estimateName}: ${yen.format(point.value)}\nTENKi-trained model estimate, not reported competitor sales`);
         return `
           <circle
             cx="${point.x.toFixed(1)}"
@@ -1157,10 +1163,11 @@ function renderEvents(date) {
 
 async function init() {
   try {
-    const [optionsText, eventsText, estimatesText] = await Promise.all([
+    const [optionsText, eventsText, estimatesText, shopEstimatesText] = await Promise.all([
       fetch(OPTIONS_URL).then((response) => response.text()),
       fetch(EVENTS_URL).then((response) => response.text()),
-      fetch(ESTIMATES_URL).then((response) => response.text())
+      fetch(ESTIMATES_URL).then((response) => response.text()),
+      fetch(SHOP_ESTIMATES_URL).then((response) => response.text())
     ]);
 
     const options = parseCsv(optionsText);
@@ -1173,6 +1180,7 @@ async function init() {
 
     state.events = parseCsv(eventsText);
     state.estimates = parseCsv(estimatesText).map(estimateFromCsv);
+    state.shopEstimates = parseCsv(shopEstimatesText).map(estimateFromCsv);
     const defaultPreset = [...els.datePresetButtons].find((button) => button.dataset.preset === "183");
     if (defaultPreset) defaultPreset.classList.add("active");
     applyDatePreset("183", false);
