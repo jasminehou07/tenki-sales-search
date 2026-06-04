@@ -1,5 +1,6 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
+const ESTIMATES_URL = "data/rakuten_estimates.csv";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 
@@ -7,6 +8,7 @@ const state = {
   rows: [],
   filtered: [],
   events: [],
+  estimates: [],
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
   genreLabels: new Map(),
@@ -488,6 +490,14 @@ function itemFromCsv(row) {
   };
 }
 
+function estimateFromCsv(row) {
+  return {
+    date: row.date,
+    genre: row.genre_id,
+    predictedSales: Number(row.predicted_sales) || 0
+  };
+}
+
 function genreLabel(id) {
   return state.genreLabels.get(String(id)) || `Genre ${id}`;
 }
@@ -666,19 +676,22 @@ function bucketLabel(key, granularity) {
   return key.slice(5);
 }
 
-function aggregateTrendRows(rows, dates, granularity) {
+function aggregateTrendRows(rows, dates, granularity, valueKey = "sales") {
   const buckets = new Map();
   dates.forEach((date) => {
     const key = bucketKeyForDate(date, granularity);
     if (!buckets.has(key)) {
-      buckets.set(key, { key, label: bucketLabel(key, granularity), dates: [], sales: 0 });
+      buckets.set(key, { key, label: bucketLabel(key, granularity), dates: [], sales: 0, rowCount: 0 });
     }
     buckets.get(key).dates.push(date);
   });
   rows.forEach((row) => {
     const key = bucketKeyForDate(row.date, granularity);
     const bucket = buckets.get(key);
-    if (bucket) bucket.sales += row.sales;
+    if (bucket) {
+      bucket.sales += row[valueKey] || 0;
+      bucket.rowCount += 1;
+    }
   });
   return [...buckets.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -790,12 +803,13 @@ async function update() {
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const trendRows = filterRows(chartRows, { genre, shop });
+  const trendEstimates = filterEstimateRows(state.estimates, chartDates, { genre });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
   renderSummary(baseRows);
-  renderTrendChart(trendRows, chartDates, currentLabel);
+  renderTrendChart(trendRows, trendEstimates, chartDates, currentLabel);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
@@ -808,6 +822,15 @@ async function update() {
 function filterRows(rows, filters) {
   return rows.filter((row) => {
     if (filters.shop !== "all" && row.shop !== filters.shop) return false;
+    if (filters.genre !== "all" && row.genre !== filters.genre) return false;
+    return true;
+  });
+}
+
+function filterEstimateRows(rows, dates, filters) {
+  const dateSet = new Set(dates);
+  return rows.filter((row) => {
+    if (!dateSet.has(row.date)) return false;
     if (filters.genre !== "all" && row.genre !== filters.genre) return false;
     return true;
   });
@@ -860,7 +883,7 @@ function renderSummary(rows) {
   els.unitsMetric.textContent = whole.format(totals.units);
 }
 
-function renderTrendChart(rows, dates, label) {
+function renderTrendChart(rows, estimateRows, dates, label) {
   if (!dates.length) {
     els.trendSubtitle.textContent = "Choose a day or period";
     els.trendChart.innerHTML = `<div class="empty">Choose dates to see sales trends.</div>`;
@@ -869,8 +892,12 @@ function renderTrendChart(rows, dates, label) {
 
   const granularity = els.granularitySelect.value || "daily";
   const buckets = aggregateTrendRows(rows, dates, granularity);
+  const estimateBuckets = aggregateTrendRows(estimateRows, dates, granularity, "predictedSales");
   const values = buckets.map((bucket) => bucket.sales);
-  const max = Math.max(...values, 1);
+  const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
+  const estimateBucketsWithData = estimateBuckets.filter((bucket) => bucket.rowCount > 0);
+  const estimateValues = estimateBucketsWithData.map((bucket) => bucket.sales);
+  const max = Math.max(...values, ...estimateValues, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -890,7 +917,22 @@ function renderTrendChart(rows, dates, label) {
       dates: buckets[index].dates
     };
   });
+  const estimatePoints = estimateBucketsWithData.map((bucket) => {
+    const index = bucketIndexes.get(bucket.key) || 0;
+    const value = bucket.sales;
+    const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
+    const y = padTop + plotHeight - ((value / max) * plotHeight);
+    return {
+      x,
+      y,
+      value,
+      label: bucket.label,
+      key: bucket.key,
+      dates: bucket.dates
+    };
+  });
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const estimateLine = estimatePoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: max * ratio,
@@ -911,7 +953,23 @@ function renderTrendChart(rows, dates, label) {
         <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
       `).join("")}
       <polygon points="${area}" class="trend-area"></polygon>
+      ${estimatePoints.length ? `<polyline points="${estimateLine}" class="trend-estimate-line"></polyline>` : ""}
       <polyline points="${line}" class="trend-line"></polyline>
+      ${estimatePoints.map((point) => {
+        const tooltip = escapeHtml(`${point.label}\nEstimated Rakuten benchmark: ${yen.format(point.value)}\nModel-based estimate, not reported competitor sales`);
+        return `
+          <circle
+            cx="${point.x.toFixed(1)}"
+            cy="${point.y.toFixed(1)}"
+            r="8"
+            class="trend-hover-target estimate-target"
+            fill="transparent"
+            stroke="transparent"
+            tabindex="0"
+            data-tooltip="${tooltip}">
+          </circle>
+        `;
+      }).join("")}
       ${points.map((point) => {
         const hasEvent = eventsForDates(point.dates).length > 0;
         const tooltip = escapeHtml(pointTooltip(point));
@@ -1099,9 +1157,10 @@ function renderEvents(date) {
 
 async function init() {
   try {
-    const [optionsText, eventsText] = await Promise.all([
+    const [optionsText, eventsText, estimatesText] = await Promise.all([
       fetch(OPTIONS_URL).then((response) => response.text()),
-      fetch(EVENTS_URL).then((response) => response.text())
+      fetch(EVENTS_URL).then((response) => response.text()),
+      fetch(ESTIMATES_URL).then((response) => response.text())
     ]);
 
     const options = parseCsv(optionsText);
@@ -1113,6 +1172,7 @@ async function init() {
     buildDateControls(dateRows);
 
     state.events = parseCsv(eventsText);
+    state.estimates = parseCsv(estimatesText).map(estimateFromCsv);
     const defaultPreset = [...els.datePresetButtons].find((button) => button.dataset.preset === "183");
     if (defaultPreset) defaultPreset.classList.add("active");
     applyDatePreset("183", false);

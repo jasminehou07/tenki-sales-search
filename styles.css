@@ -393,6 +393,41 @@ input:disabled {
   padding: 14px 16px 18px;
 }
 
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 10px 16px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.trend-legend span {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.trend-legend small {
+  color: #7a838d;
+  font-weight: 650;
+}
+
+.legend-line {
+  display: inline-block;
+  width: 24px;
+  height: 0;
+  border-top: 3px solid var(--accent);
+  border-radius: 999px;
+}
+
+.legend-line.estimate-line {
+  border-top-color: var(--violet);
+  border-top-style: dashed;
+}
+
 .trend-svg {
   display: block;
   width: 100%;
@@ -415,6 +450,16 @@ input:disabled {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 3;
+}
+
+.trend-estimate-line {
+  fill: none;
+  stroke: var(--violet);
+  stroke-dasharray: 8 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+  opacity: 0.82;
 }
 
 .trend-point {
