@@ -4,7 +4,7 @@ const ESTIMATES_URL = "data/rakuten_estimates.csv";
 const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
-const RANK_GAP_URL = "data/rank-gap-estimates";
+const RANK_GAP_URL = "data/ranked-shops";
 
 const state = {
   rows: [],
