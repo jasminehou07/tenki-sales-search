@@ -710,8 +710,21 @@ td:nth-child(2),
 th:nth-child(3),
 td:nth-child(3),
 .top-items-panel th:nth-child(4),
-.top-items-panel td:nth-child(4) {
+.top-items-panel td:nth-child(4),
+.rank-gap-panel th:nth-child(2),
+.rank-gap-panel td:nth-child(2),
+.rank-gap-panel th:nth-child(5),
+.rank-gap-panel td:nth-child(5) {
   text-align: left;
+}
+
+.rank-gap-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.rank-gap-wrap {
+  max-height: 360px;
 }
 
 thead th {

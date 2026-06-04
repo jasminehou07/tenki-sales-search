@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260604-shop-estimates">
+  <link rel="stylesheet" href="styles.css?v=20260604-rank-gap-estimates">
 </head>
 <body>
   <header class="app-header">
@@ -230,6 +230,32 @@
           </table>
         </div>
       </div>
+
+      <div class="panel rank-gap-panel">
+        <div class="panel-heading rank-gap-heading">
+          <div>
+            <h2>Estimated Missing Rank Sales</h2>
+            <span>Interpolated from known TENKi rank and sales gaps</span>
+          </div>
+          <span id="rankGapCount">0 estimates</span>
+        </div>
+        <div class="table-wrap rank-gap-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Genre</th>
+                <th>Estimated Rank</th>
+                <th>Estimated Sales</th>
+                <th>Known Range</th>
+              </tr>
+            </thead>
+            <tbody id="rankGapBody">
+              <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section class="panel event-panel">
@@ -241,6 +267,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260604-dedupe-events"></script>
+  <script src="app.js?v=20260604-rank-gap-estimates"></script>
 </body>
 </html>

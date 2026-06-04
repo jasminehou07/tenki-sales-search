@@ -4,6 +4,7 @@ const ESTIMATES_URL = "data/rakuten_estimates.csv";
 const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
+const RANK_GAP_URL = "data/rank-gap-estimates";
 
 const state = {
   rows: [],
@@ -13,6 +14,7 @@ const state = {
   shopEstimates: [],
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
+  loadedRankGapMonths: new Map(),
   genreLabels: new Map(),
   byDate: new Map(),
   byShop: new Map(),
@@ -54,6 +56,8 @@ const els = {
   dayCompareStatus: document.getElementById("dayCompareStatus"),
   topItemsBody: document.getElementById("topItemsBody"),
   topItemsCount: document.getElementById("topItemsCount"),
+  rankGapBody: document.getElementById("rankGapBody"),
+  rankGapCount: document.getElementById("rankGapCount"),
   eventsTitle: document.getElementById("eventsTitle"),
   eventList: document.getElementById("eventList"),
   eventCount: document.getElementById("eventCount")
@@ -501,6 +505,19 @@ function estimateFromCsv(row) {
   };
 }
 
+function rankGapFromCsv(row) {
+  return {
+    date: row.date,
+    genre: row.genre,
+    rank: Number(row.rank) || 0,
+    estimatedSales: Number(row.estimated_sales) || 0,
+    lowerRank: Number(row.lower_rank) || 0,
+    upperRank: Number(row.upper_rank) || 0,
+    lowerSales: Number(row.lower_sales) || 0,
+    upperSales: Number(row.upper_sales) || 0
+  };
+}
+
 function genreLabel(id) {
   return state.genreLabels.get(String(id)) || `Genre ${id}`;
 }
@@ -790,6 +807,13 @@ async function loadPeriodItems(dates) {
   return rowSets.flat().filter((row) => dateSet.has(row.date));
 }
 
+async function loadPeriodRankGaps(dates) {
+  const dateSet = new Set(dates);
+  const months = monthsForDates(dates);
+  const rowSets = await Promise.all(months.map((month) => loadRankGapMonth(month)));
+  return rowSets.flat().filter((row) => dateSet.has(row.date));
+}
+
 async function update() {
   const genre = els.genreSelect.value;
   const shop = els.shopSelect.value;
@@ -804,10 +828,11 @@ async function update() {
   }
 
   const chartDates = trendDatesForPeriod(periodDates);
-  const [dateRows, itemRows, chartRows] = await Promise.all([
+  const [dateRows, itemRows, chartRows, rankGapRows] = await Promise.all([
     loadPeriodDates(periodDates),
     loadPeriodItems(periodDates),
-    loadPeriodDates(chartDates)
+    loadPeriodDates(chartDates),
+    loadPeriodRankGaps(periodDates)
   ]);
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
@@ -823,6 +848,7 @@ async function update() {
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
+  renderRankGapEstimates(rankGapRows, periodDates);
   renderEvents(periodDates);
   els.loadStatus.textContent = periodDates.length > 1
     ? `${whole.format(periodDates.length)} days loaded for ${currentLabel}`
@@ -859,6 +885,8 @@ function renderEmptyState() {
   els.dayCompareBody.innerHTML = `<div class="empty">${prompt} to compare sales by date.</div>`;
   els.topItemsCount.textContent = prompt;
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
+  els.rankGapCount.textContent = prompt;
+  els.rankGapBody.innerHTML = `<tr><td colspan="5">${prompt} to estimate missing rank sales.</td></tr>`;
 }
 
 function monthsForDates(dates) {
@@ -880,6 +908,19 @@ async function loadItemMonth(month) {
   const text = await fetch(`${ITEMS_BY_MONTH_URL}/${month}.csv`).then((response) => response.text());
   const rows = parseCsv(text).map(itemFromCsv);
   state.loadedItemMonths.set(month, rows);
+  return rows;
+}
+
+async function loadRankGapMonth(month) {
+  if (state.loadedRankGapMonths.has(month)) return state.loadedRankGapMonths.get(month);
+  const response = await fetch(`${RANK_GAP_URL}/${month}.csv`);
+  if (!response.ok) {
+    state.loadedRankGapMonths.set(month, []);
+    return [];
+  }
+  const text = await response.text();
+  const rows = parseCsv(text).map(rankGapFromCsv);
+  state.loadedRankGapMonths.set(month, rows);
   return rows;
 }
 
@@ -1038,6 +1079,30 @@ function renderTopItems(rows) {
       <td>${genreLabel(row.genre)}</td>
       <td>${yen.format(row.sales)}</td>
       <td>${whole.format(row.units)}</td>
+    </tr>
+  `).join("");
+}
+
+function renderRankGapEstimates(rows, dates) {
+  const genre = els.genreSelect.value;
+  const filtered = rows
+    .filter((row) => genre === "all" || row.genre === genre)
+    .sort((a, b) => b.estimatedSales - a.estimatedSales || a.date.localeCompare(b.date) || a.rank - b.rank);
+  const topRows = filtered.slice(0, 30);
+  els.rankGapCount.textContent = `${whole.format(filtered.length)} estimates`;
+
+  if (!topRows.length) {
+    els.rankGapBody.innerHTML = `<tr><td colspan="5">No missing rank estimates found for ${periodLabel(dates)}.</td></tr>`;
+    return;
+  }
+
+  els.rankGapBody.innerHTML = topRows.map((row) => `
+    <tr>
+      <td>${row.date}</td>
+      <td>${genreLabel(row.genre)}</td>
+      <td>#${whole.format(row.rank)}</td>
+      <td>${yen.format(row.estimatedSales)}</td>
+      <td>#${whole.format(row.lowerRank)} (${yen.format(row.lowerSales)}) to #${whole.format(row.upperRank)} (${yen.format(row.upperSales)})</td>
     </tr>
   `).join("");
 }
