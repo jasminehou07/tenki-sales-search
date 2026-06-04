@@ -5,6 +5,7 @@ const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
+const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
   rows: [],
@@ -513,7 +514,8 @@ function rankGapFromCsv(row) {
     rank: Number(row.rank) || 0,
     shop: row.shop || "",
     source: row.source || "estimated",
-    sales: Number(row.sales) || 0,
+    sales: row.sales === "" ? null : Number(row.sales) || 0,
+    salesKnown: row.sales !== "",
     lowerRank: Number(row.lower_rank) || 0,
     upperRank: Number(row.upper_rank) || 0,
     lowerSales: Number(row.lower_sales) || 0,
@@ -1105,6 +1107,11 @@ function renderRankGapEstimates(rows, dates) {
     els.rankGapBody.innerHTML = `<tr><td colspan="4">Choose one product genre to see a rank 1-20 table.</td></tr>`;
     return;
   }
+  if (GENRES_WITHOUT_RANK_DATA.has(genre)) {
+    els.rankGapCount.textContent = "No rank file";
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">The local TENKi files do not include a ranking file for ${genreLabel(genre)}.</td></tr>`;
+    return;
+  }
 
   const availableRankDates = new Set(rows
     .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20)
@@ -1125,14 +1132,30 @@ function renderRankGapEstimates(rows, dates) {
 
   const byRank = new Map();
   filtered.forEach((row) => {
-    const current = byRank.get(row.rank) || { rank: row.rank, shops: new Set(), sales: 0, source: "missing" };
+    const current = byRank.get(row.rank) || {
+      rank: row.rank,
+      shops: new Set(),
+      sales: 0,
+      salesKnown: false,
+      estimatedSales: 0,
+      estimateKnown: false,
+      source: "missing"
+    };
     if (row.source === "actual") {
       current.source = "actual";
       current.shops.add(row.shop);
-      current.sales += row.sales;
+      if (row.salesKnown) {
+        current.sales += row.sales;
+        current.salesKnown = true;
+      }
+    } else if (!current.salesKnown) {
+      current.estimatedSales = row.sales || 0;
+      current.estimateKnown = row.salesKnown;
+      if (current.source !== "actual") current.source = "estimated";
     } else if (current.source !== "actual") {
       current.source = "estimated";
-      current.sales = row.sales;
+      current.estimatedSales = row.sales || 0;
+      current.estimateKnown = row.salesKnown;
     }
     byRank.set(row.rank, current);
   });
@@ -1140,12 +1163,18 @@ function renderRankGapEstimates(rows, dates) {
   els.rankGapCount.textContent = `Ranks 1-20 for ${rankDate}`;
   els.rankGapBody.innerHTML = Array.from({ length: 20 }, (_, index) => {
     const rank = index + 1;
-    const row = byRank.get(rank) || { rank, shops: new Set(), sales: 0, source: "missing" };
+    const row = byRank.get(rank) || { rank, shops: new Set(), sales: 0, salesKnown: false, estimatedSales: 0, estimateKnown: false, source: "missing" };
     const isActual = row.source === "actual";
-    const isEstimated = row.source === "estimated";
+    const hasEstimatedSales = row.estimateKnown && !row.salesKnown;
+    const isEstimated = row.source === "estimated" || hasEstimatedSales;
     const shopText = isActual ? [...row.shops].map((shop) => `Shop ${shop}`).join(", ") : "Unknown shop";
+    const displaySales = row.salesKnown ? row.sales : row.estimateKnown ? row.estimatedSales : null;
     const source = isActual
-      ? `<span class="source-pill actual">TENKi actual</span>`
+      ? row.salesKnown
+        ? `<span class="source-pill actual">TENKi actual</span>`
+        : row.estimateKnown
+          ? `<span class="source-pill estimated">Estimated</span>`
+          : `<span class="source-pill actual">TENKi rank</span>`
       : isEstimated
         ? `<span class="source-pill estimated">Estimated</span>`
         : `<span class="source-pill missing">No estimate</span>`;
@@ -1153,7 +1182,7 @@ function renderRankGapEstimates(rows, dates) {
       <tr class="${isActual ? "actual-rank-row" : isEstimated ? "estimated-rank-row" : "missing-rank-row"}">
         <td>#${whole.format(rank)}</td>
         <td>${isActual || isEstimated ? shopText : "-"}</td>
-        <td>${isActual || isEstimated ? yen.format(row.sales) : "-"}</td>
+        <td>${displaySales === null ? "-" : yen.format(displaySales)}</td>
         <td>${source}</td>
       </tr>
     `;
