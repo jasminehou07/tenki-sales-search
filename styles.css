@@ -418,29 +418,31 @@ input:disabled {
 }
 
 .trend-point {
-  fill: #ffffff;
-  stroke: var(--accent-strong);
-  stroke-width: 1.8;
+  fill: #f7fffd;
+  stroke: #4f9f97;
+  stroke-width: 1.4;
   cursor: crosshair;
-  opacity: 0.92;
+  opacity: 0.58;
   transition: r 120ms ease, stroke-width 120ms ease, opacity 120ms ease;
 }
 
 .trend-point.has-event {
-  fill: #fff8e8;
+  fill: #fff3cf;
   stroke: var(--gold);
+  opacity: 0.9;
 }
 
 .trend-point:hover,
 .trend-point:focus {
   opacity: 1;
   outline: none;
-  stroke-width: 3;
+  stroke-width: 2.4;
 }
 
 .trend-hover-target {
   fill: transparent;
   stroke: transparent;
+  opacity: 0;
   cursor: crosshair;
   pointer-events: all;
 }

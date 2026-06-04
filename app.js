@@ -922,7 +922,7 @@ function renderTrendChart(rows, dates, label) {
           <circle
             cx="${point.x.toFixed(1)}"
             cy="${point.y.toFixed(1)}"
-            r="${point === peak ? 4.8 : hasEvent ? 3.6 : 2.6}"
+            r="${point === peak ? 4.2 : hasEvent ? 3 : 1.7}"
             class="trend-point${hasEvent ? " has-event" : ""}">
           </circle>
           <circle
@@ -930,6 +930,8 @@ function renderTrendChart(rows, dates, label) {
             cy="${point.y.toFixed(1)}"
             r="9"
             class="trend-hover-target${hasEvent ? " has-event" : ""}"
+            fill="transparent"
+            stroke="transparent"
             tabindex="0"
             data-tooltip="${tooltip}">
           </circle>
