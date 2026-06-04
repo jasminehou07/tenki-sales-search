@@ -510,7 +510,9 @@ function rankGapFromCsv(row) {
     date: row.date,
     genre: row.genre,
     rank: Number(row.rank) || 0,
-    estimatedSales: Number(row.estimated_sales) || 0,
+    shop: row.shop || "",
+    source: row.source || "estimated",
+    sales: Number(row.sales) || 0,
     lowerRank: Number(row.lower_rank) || 0,
     upperRank: Number(row.upper_rank) || 0,
     lowerSales: Number(row.lower_sales) || 0,
@@ -886,7 +888,7 @@ function renderEmptyState() {
   els.topItemsCount.textContent = prompt;
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
   els.rankGapCount.textContent = prompt;
-  els.rankGapBody.innerHTML = `<tr><td colspan="5">${prompt} to estimate missing rank sales.</td></tr>`;
+  els.rankGapBody.innerHTML = `<tr><td colspan="6">${prompt} to see ranked shops and missing rank estimates.</td></tr>`;
 }
 
 function monthsForDates(dates) {
@@ -1087,24 +1089,34 @@ function renderRankGapEstimates(rows, dates) {
   const genre = els.genreSelect.value;
   const filtered = rows
     .filter((row) => genre === "all" || row.genre === genre)
-    .sort((a, b) => b.estimatedSales - a.estimatedSales || a.date.localeCompare(b.date) || a.rank - b.rank);
-  const topRows = filtered.slice(0, 30);
-  els.rankGapCount.textContent = `${whole.format(filtered.length)} estimates`;
+    .sort((a, b) => {
+      if (dates.length === 1 && genre !== "all") return a.rank - b.rank || a.source.localeCompare(b.source);
+      return b.date.localeCompare(a.date) || a.genre.localeCompare(b.genre) || a.rank - b.rank || a.source.localeCompare(b.source);
+    });
+  const topRows = filtered.slice(0, 50);
+  els.rankGapCount.textContent = `${whole.format(filtered.length)} rank rows`;
 
   if (!topRows.length) {
-    els.rankGapBody.innerHTML = `<tr><td colspan="5">No missing rank estimates found for ${periodLabel(dates)}.</td></tr>`;
+    els.rankGapBody.innerHTML = `<tr><td colspan="6">No rank rows found for ${periodLabel(dates)}.</td></tr>`;
     return;
   }
 
-  els.rankGapBody.innerHTML = topRows.map((row) => `
-    <tr>
-      <td>${row.date}</td>
-      <td>${genreLabel(row.genre)}</td>
-      <td>#${whole.format(row.rank)}</td>
-      <td>${yen.format(row.estimatedSales)}</td>
-      <td>#${whole.format(row.lowerRank)} (${yen.format(row.lowerSales)}) to #${whole.format(row.upperRank)} (${yen.format(row.upperSales)})</td>
-    </tr>
-  `).join("");
+  els.rankGapBody.innerHTML = topRows.map((row) => {
+    const isActual = row.source === "actual";
+    const source = isActual
+      ? `<span class="source-pill actual">TENKi actual</span>`
+      : `<span class="source-pill estimated">Estimated</span> <small>#${whole.format(row.lowerRank)} (${yen.format(row.lowerSales)}) to #${whole.format(row.upperRank)} (${yen.format(row.upperSales)})</small>`;
+    return `
+      <tr class="${isActual ? "actual-rank-row" : "estimated-rank-row"}">
+        <td>${row.date}</td>
+        <td>${genreLabel(row.genre)}</td>
+        <td>#${whole.format(row.rank)}</td>
+        <td>${isActual ? `Shop ${row.shop}` : "Unknown shop"}</td>
+        <td>${yen.format(row.sales)}</td>
+        <td>${source}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function totalsFor(rows) {

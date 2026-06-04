@@ -713,8 +713,10 @@ td:nth-child(3),
 .top-items-panel td:nth-child(4),
 .rank-gap-panel th:nth-child(2),
 .rank-gap-panel td:nth-child(2),
-.rank-gap-panel th:nth-child(5),
-.rank-gap-panel td:nth-child(5) {
+.rank-gap-panel th:nth-child(4),
+.rank-gap-panel td:nth-child(4),
+.rank-gap-panel th:nth-child(6),
+.rank-gap-panel td:nth-child(6) {
   text-align: left;
 }
 
@@ -725,6 +727,37 @@ td:nth-child(3),
 
 .rank-gap-wrap {
   max-height: 360px;
+}
+
+.rank-gap-panel small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.source-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.source-pill.actual {
+  background: #eaf7f4;
+  color: var(--accent-strong);
+}
+
+.source-pill.estimated {
+  background: #f1edff;
+  color: #5944d8;
+  margin-right: 6px;
+}
+
+.estimated-rank-row {
+  background: #fbfaff;
 }
 
 thead th {
