@@ -558,6 +558,10 @@ function yearToDateDates() {
   return datesBetween(start, state.latestDate);
 }
 
+function allTimeDates() {
+  return [...state.dates].sort((a, b) => a.localeCompare(b));
+}
+
 function datesBetween(startDate, endDate) {
   if (!startDate || !endDate) return [];
   const first = startDate <= endDate ? startDate : endDate;
@@ -599,7 +603,9 @@ function applyDatePreset(preset, shouldUpdate = true) {
         ? monthToDateDates()
         : preset === "ytd"
           ? yearToDateDates()
-          : latestMonthDates();
+          : preset === "all"
+            ? allTimeDates()
+            : latestMonthDates();
 
   if (!dates.length) return;
   if (dates.length === 1) {
