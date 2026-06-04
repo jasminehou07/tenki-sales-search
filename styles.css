@@ -78,7 +78,7 @@ main {
 .date-filter-grid {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
   padding: 12px;
@@ -93,6 +93,14 @@ main {
 
 .range-mode .range-filter {
   display: grid;
+}
+
+.range-prefix {
+  display: none;
+}
+
+.range-mode .range-prefix {
+  display: inline;
 }
 
 label {
@@ -415,7 +423,7 @@ thead th {
   }
 
   .date-filter-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
 }
