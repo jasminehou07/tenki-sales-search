@@ -1161,9 +1161,10 @@ function renderEvents(date) {
   const first = dates[0];
   const last = dates[dates.length - 1];
   const matches = state.events.filter((event) => event.start_date <= last && event.end_date >= first);
-  els.eventCount.textContent = `${matches.length} events`;
-  els.eventList.innerHTML = matches.length
-    ? matches.map((event) => `<span class="event-chip">${event.name}</span>`).join("")
+  const uniqueEvents = [...new Set(matches.map((event) => event.name))].sort((a, b) => a.localeCompare(b));
+  els.eventCount.textContent = `${uniqueEvents.length} events`;
+  els.eventList.innerHTML = uniqueEvents.length
+    ? uniqueEvents.map((name) => `<span class="event-chip">${name}</span>`).join("")
     : `<div class="empty">No listed events for ${periodLabel(dates)}.</div>`;
 }
 
