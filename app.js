@@ -19,9 +19,13 @@ const els = {
   loadStatus: document.getElementById("loadStatus"),
   genreSelect: document.getElementById("genreSelect"),
   shopSelect: document.getElementById("shopSelect"),
+  dateModeSelect: document.getElementById("dateModeSelect"),
   yearSelect: document.getElementById("yearSelect"),
   monthSelect: document.getElementById("monthSelect"),
   daySelect: document.getElementById("daySelect"),
+  endYearSelect: document.getElementById("endYearSelect"),
+  endMonthSelect: document.getElementById("endMonthSelect"),
+  endDaySelect: document.getElementById("endDaySelect"),
   compareYearSelect: document.getElementById("compareYearSelect"),
   compareMonthSelect: document.getElementById("compareMonthSelect"),
   compareDaySelect: document.getElementById("compareDaySelect"),
@@ -34,6 +38,7 @@ const els = {
   dayCompareStatus: document.getElementById("dayCompareStatus"),
   topItemsBody: document.getElementById("topItemsBody"),
   topItemsCount: document.getElementById("topItemsCount"),
+  eventsTitle: document.getElementById("eventsTitle"),
   eventList: document.getElementById("eventList"),
   eventCount: document.getElementById("eventCount")
 };
@@ -61,7 +66,8 @@ function addOptions(select, rows) {
 
 function setEnabled(enabled) {
   [
-    els.genreSelect, els.shopSelect, els.yearSelect, els.monthSelect, els.daySelect,
+    els.genreSelect, els.shopSelect, els.dateModeSelect, els.yearSelect, els.monthSelect, els.daySelect,
+    els.endYearSelect, els.endMonthSelect, els.endDaySelect,
     els.compareYearSelect, els.compareMonthSelect, els.compareDaySelect,
     els.resetButton
   ].forEach((el) => {
@@ -72,6 +78,15 @@ function setEnabled(enabled) {
 function selectedDate() {
   if (!els.yearSelect.value || !els.monthSelect.value || !els.daySelect.value) return "";
   return `${els.yearSelect.value}-${els.monthSelect.value}-${els.daySelect.value}`;
+}
+
+function selectedEndDate() {
+  if (!els.endYearSelect.value || !els.endMonthSelect.value || !els.endDaySelect.value) return "";
+  return `${els.endYearSelect.value}-${els.endMonthSelect.value}-${els.endDaySelect.value}`;
+}
+
+function isRangeMode() {
+  return els.dateModeSelect.value === "range";
 }
 
 function selectedCompareDate() {
@@ -85,12 +100,14 @@ function buildDateControls(dateRows) {
   const years = [...new Set(state.dates.map((date) => date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
 
   els.yearSelect.innerHTML = `<option value="">Year</option>`;
+  els.endYearSelect.innerHTML = `<option value="">Year</option>`;
   els.compareYearSelect.innerHTML = `<option value="">Year</option>`;
   years.forEach((year) => {
     const option = document.createElement("option");
     option.value = year;
     option.textContent = year;
     els.yearSelect.appendChild(option);
+    els.endYearSelect.appendChild(option.cloneNode(true));
     els.compareYearSelect.appendChild(option.cloneNode(true));
   });
 }
@@ -185,6 +202,51 @@ function refreshCompareDayOptions(keepValue = true, chooseFirst = false) {
   els.compareDaySelect.value = days.includes(oldValue) ? oldValue : (chooseFirst ? days[0] || "" : "");
 }
 
+function refreshEndMonthOptions(keepValue = true, chooseFirst = false) {
+  const oldValue = keepValue ? els.endMonthSelect.value : "";
+  const year = els.endYearSelect.value;
+  const months = [...new Set(state.dates
+    .filter((date) => !year || date.startsWith(`${year}-`))
+    .map((date) => date.slice(5, 7)))]
+    .sort((a, b) => Number(b) - Number(a));
+
+  els.endMonthSelect.innerHTML = `<option value="">Month</option>`;
+  months.forEach((month) => {
+    const option = document.createElement("option");
+    option.value = month;
+    option.textContent = month;
+    els.endMonthSelect.appendChild(option);
+  });
+  els.endMonthSelect.value = months.includes(oldValue) ? oldValue : (chooseFirst ? months[0] || "" : "");
+}
+
+function refreshEndDayOptions(keepValue = true, chooseFirst = false) {
+  const oldValue = keepValue ? els.endDaySelect.value : "";
+  const year = els.endYearSelect.value;
+  const month = els.endMonthSelect.value;
+  if (!year || !month) {
+    els.endDaySelect.innerHTML = `<option value="">Day</option>`;
+    els.endDaySelect.value = "";
+    els.endDaySelect.selectedIndex = 0;
+    return;
+  }
+
+  const prefix = `${year}-${month}-`;
+  const days = [...new Set(state.dates
+    .filter((date) => date.startsWith(prefix))
+    .map((date) => date.slice(8, 10)))]
+    .sort((a, b) => Number(b) - Number(a));
+
+  els.endDaySelect.innerHTML = `<option value="">Day</option>`;
+  days.forEach((day) => {
+    const option = document.createElement("option");
+    option.value = day;
+    option.textContent = day;
+    els.endDaySelect.appendChild(option);
+  });
+  els.endDaySelect.value = days.includes(oldValue) ? oldValue : (chooseFirst ? days[0] || "" : "");
+}
+
 function setDateParts(date) {
   if (!date || !state.availableDates.has(date)) {
     els.yearSelect.value = "";
@@ -227,6 +289,27 @@ function setCompareDateParts(date) {
   els.compareDaySelect.value = day;
 }
 
+function setEndDateParts(date) {
+  if (!date || !state.availableDates.has(date)) {
+    els.endYearSelect.value = "";
+    els.endYearSelect.selectedIndex = 0;
+    els.endMonthSelect.innerHTML = `<option value="">Month</option>`;
+    els.endMonthSelect.value = "";
+    els.endMonthSelect.selectedIndex = 0;
+    els.endDaySelect.innerHTML = `<option value="">Day</option>`;
+    els.endDaySelect.value = "";
+    els.endDaySelect.selectedIndex = 0;
+    return;
+  }
+
+  const [year, month, day] = date.split("-");
+  els.endYearSelect.value = year;
+  refreshEndMonthOptions(false);
+  els.endMonthSelect.value = month;
+  refreshEndDayOptions(false);
+  els.endDaySelect.value = day;
+}
+
 function nearestComparisonDate(date) {
   if (!state.dates.length) return "";
   return state.dates.find((availableDate) => availableDate !== date) || state.dates[0];
@@ -235,11 +318,15 @@ function nearestComparisonDate(date) {
 function resetFilters() {
   els.genreSelect.value = "all";
   els.shopSelect.value = "all";
+  els.dateModeSelect.value = "day";
+  syncRangeControls();
   setDateParts("");
+  setEndDateParts("");
   setCompareDateParts("");
 }
 
 function keepComparisonDateDifferent() {
+  if (!selectedDate()) return;
   if (selectedCompareDate() === selectedDate()) {
     setCompareDateParts(nearestComparisonDate(selectedDate()));
   }
@@ -277,19 +364,58 @@ function genreLabel(id) {
   return state.genreLabels.get(String(id)) || `Genre ${id}`;
 }
 
+function syncRangeControls() {
+  document.body.classList.toggle("range-mode", isRangeMode());
+}
+
+function selectedPeriodDates() {
+  const startDate = selectedDate();
+  if (!startDate || !state.availableDates.has(startDate)) return [];
+  if (!isRangeMode()) return [startDate];
+
+  const endDate = selectedEndDate();
+  if (!endDate || !state.availableDates.has(endDate)) return [];
+
+  const first = startDate <= endDate ? startDate : endDate;
+  const last = startDate <= endDate ? endDate : startDate;
+  return state.dates
+    .filter((date) => date >= first && date <= last)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function periodLabel(dates) {
+  if (!dates.length) return "";
+  if (dates.length === 1) return dates[0];
+  return `${dates[0]} to ${dates[dates.length - 1]}`;
+}
+
+async function loadPeriodDates(dates) {
+  if (dates.length > 1) {
+    els.loadStatus.textContent = `Loading ${whole.format(dates.length)} days...`;
+  }
+  const rowSets = await Promise.all(dates.map((date) => loadDate(date)));
+  return rowSets.flat();
+}
+
+async function loadPeriodItems(dates) {
+  const rowSets = await Promise.all(dates.map((date) => loadItemDate(date)));
+  return rowSets.flat();
+}
+
 async function update() {
   const genre = els.genreSelect.value;
   const shop = els.shopSelect.value;
-  const date = selectedDate();
+  const periodDates = selectedPeriodDates();
+  const currentLabel = periodLabel(periodDates);
   const compareDate = selectedCompareDate();
 
-  if (!date || !state.availableDates.has(date)) {
+  if (!periodDates.length) {
     renderEmptyState();
-    renderEvents(date);
+    renderEvents(periodDates);
     return;
   }
 
-  const [dateRows, itemRows] = await Promise.all([loadDate(date), loadItemDate(date)]);
+  const [dateRows, itemRows] = await Promise.all([loadPeriodDates(periodDates), loadPeriodItems(periodDates)]);
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
@@ -298,9 +424,12 @@ async function update() {
 
   renderSummary(baseRows);
   renderShopComparison(baseRows);
-  renderDayComparison(baseRows, compareRows, date, compareDate);
+  renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
-  renderEvents(date);
+  renderEvents(periodDates);
+  if (periodDates.length > 1) {
+    els.loadStatus.textContent = `${whole.format(periodDates.length)} days loaded for ${currentLabel}`;
+  }
 }
 
 function filterRows(rows, filters) {
@@ -314,12 +443,13 @@ function filterRows(rows, filters) {
 function renderEmptyState() {
   els.salesMetric.textContent = "-";
   els.unitsMetric.textContent = "-";
-  els.shopCompareCount.textContent = "Choose a day";
-  els.shopCompareBody.innerHTML = `<tr><td colspan="5">Choose a day to compare shops.</td></tr>`;
-  els.dayCompareStatus.textContent = "Choose a day";
-  els.dayCompareBody.innerHTML = `<div class="empty">Choose a day to compare sales by date.</div>`;
-  els.topItemsCount.textContent = "Choose a day";
-  els.topItemsBody.innerHTML = `<tr><td colspan="6">Choose a day to see top items.</td></tr>`;
+  const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
+  els.shopCompareCount.textContent = prompt;
+  els.shopCompareBody.innerHTML = `<tr><td colspan="5">${prompt} to compare shops.</td></tr>`;
+  els.dayCompareStatus.textContent = prompt;
+  els.dayCompareBody.innerHTML = `<div class="empty">${prompt} to compare sales by date.</div>`;
+  els.topItemsCount.textContent = prompt;
+  els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
 }
 
 async function loadDate(date) {
@@ -352,8 +482,17 @@ function renderSummary(rows) {
 }
 
 function renderTopItems(rows) {
-  const topItems = [...rows].sort((a, b) => b.units - a.units || b.sales - a.sales).slice(0, 25);
-  els.topItemsCount.textContent = `${whole.format(rows.length)} sold items`;
+  const itemTotals = new Map();
+  rows.forEach((row) => {
+    const key = `${row.item}|${row.shop}|${row.genre}`;
+    const current = itemTotals.get(key) || { item: row.item, shop: row.shop, genre: row.genre, sales: 0, units: 0 };
+    current.sales += row.sales;
+    current.units += row.units;
+    itemTotals.set(key, current);
+  });
+  const allItems = [...itemTotals.values()];
+  const topItems = allItems.sort((a, b) => b.units - a.units || b.sales - a.sales).slice(0, 25);
+  els.topItemsCount.textContent = `${whole.format(allItems.length)} sold items`;
   if (!topItems.length) {
     els.topItemsBody.innerHTML = `<tr><td colspan="6">No sold items found for this search.</td></tr>`;
     return;
@@ -452,7 +591,7 @@ function renderDayComparison(currentRows, compareRows, date, compareDate) {
 
   els.dayCompareBody.innerHTML = `
     <div class="compare-day-card selected-day">
-      <span>Selected day</span>
+      <span>${isRangeMode() ? "Selected period" : "Selected day"}</span>
       <strong>${date}</strong>
       <div>${yen.format(current.sales)}</div>
       <small>${whole.format(current.units)} units</small>
@@ -479,17 +618,21 @@ function renderDayComparison(currentRows, compareRows, date, compareDate) {
 }
 
 function renderEvents(date) {
-  if (!date) {
-    els.eventCount.textContent = "Choose a day";
-    els.eventList.innerHTML = `<div class="empty">Choose a specific day to see calendar events.</div>`;
+  const dates = Array.isArray(date) ? date : (date ? [date] : []);
+  els.eventsTitle.textContent = dates.length > 1 ? "Events During Selected Period" : "Events On Selected Day";
+  if (!dates.length) {
+    els.eventCount.textContent = isRangeMode() ? "Choose a period" : "Choose a day";
+    els.eventList.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a specific day"} to see calendar events.</div>`;
     return;
   }
 
-  const matches = state.events.filter((event) => event.start_date <= date && event.end_date >= date);
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const matches = state.events.filter((event) => event.start_date <= last && event.end_date >= first);
   els.eventCount.textContent = `${matches.length} events`;
   els.eventList.innerHTML = matches.length
     ? matches.map((event) => `<span class="event-chip">${event.name}</span>`).join("")
-    : `<div class="empty">No listed events for ${date}.</div>`;
+    : `<div class="empty">No listed events for ${periodLabel(dates)}.</div>`;
 }
 
 async function init() {
@@ -509,7 +652,9 @@ async function init() {
 
     state.events = parseCsv(eventsText);
     setDateParts(state.dates[0] || "");
+    setEndDateParts("");
     setCompareDateParts(nearestComparisonDate(selectedDate()));
+    syncRangeControls();
     els.loadStatus.textContent = "Ready";
     setEnabled(true);
     await update();
@@ -522,6 +667,11 @@ async function init() {
 
 [els.genreSelect, els.shopSelect].forEach((el) => {
   el.addEventListener("input", () => update());
+});
+
+els.dateModeSelect.addEventListener("input", () => {
+  syncRangeControls();
+  update();
 });
 
 els.yearSelect.addEventListener("input", () => {
@@ -541,6 +691,19 @@ els.daySelect.addEventListener("input", () => {
   keepComparisonDateDifferent();
   update();
 });
+
+els.endYearSelect.addEventListener("input", () => {
+  refreshEndMonthOptions(false);
+  refreshEndDayOptions(false);
+  update();
+});
+
+els.endMonthSelect.addEventListener("input", () => {
+  refreshEndDayOptions(false);
+  update();
+});
+
+els.endDaySelect.addEventListener("input", () => update());
 
 els.compareYearSelect.addEventListener("input", () => {
   refreshCompareMonthOptions(false);

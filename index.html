@@ -30,6 +30,13 @@
         </select>
       </label>
       <label>
+        Search type
+        <select id="dateModeSelect" disabled>
+          <option value="day">Single day</option>
+          <option value="range">Date range</option>
+        </select>
+      </label>
+      <label>
         Year
         <select id="yearSelect" disabled>
           <option value="">Year</option>
@@ -44,6 +51,24 @@
       <label>
         Day
         <select id="daySelect" disabled>
+          <option value="">Day</option>
+        </select>
+      </label>
+      <label class="range-filter">
+        End year
+        <select id="endYearSelect" disabled>
+          <option value="">Year</option>
+        </select>
+      </label>
+      <label class="range-filter">
+        End month
+        <select id="endMonthSelect" disabled>
+          <option value="">Month</option>
+        </select>
+      </label>
+      <label class="range-filter">
+        End day
+        <select id="endDaySelect" disabled>
           <option value="">Day</option>
         </select>
       </label>
@@ -137,7 +162,7 @@
 
     <section class="panel event-panel">
       <div class="panel-heading">
-        <h2>Events On Selected Day</h2>
+        <h2 id="eventsTitle">Events On Selected Day</h2>
         <span id="eventCount">0 events</span>
       </div>
       <div id="eventList" class="event-list"></div>
