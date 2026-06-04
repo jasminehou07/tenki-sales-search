@@ -463,12 +463,6 @@ input:disabled {
   fill: var(--accent-strong);
 }
 
-.trend-peak {
-  fill: var(--accent-strong);
-  font-size: 13px;
-  font-weight: 850;
-}
-
 .trend-tooltip {
   position: absolute;
   z-index: 10;
