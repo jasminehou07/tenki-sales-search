@@ -892,7 +892,6 @@ function renderTrendChart(rows, dates, label) {
   });
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
-  const peak = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: max * ratio,
     y: padTop + plotHeight - (plotHeight * ratio)
@@ -920,7 +919,7 @@ function renderTrendChart(rows, dates, label) {
           <circle
             cx="${point.x.toFixed(1)}"
             cy="${point.y.toFixed(1)}"
-            r="${point === peak ? 4.2 : hasEvent ? 3 : 1.7}"
+            r="${hasEvent ? 3 : 1.7}"
             class="trend-point${hasEvent ? " has-event" : ""}">
           </circle>
           <circle
@@ -938,7 +937,6 @@ function renderTrendChart(rows, dates, label) {
       ${ticks.map((point) => `
         <text x="${point.x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.label}</text>
       `).join("")}
-      <text x="${width - padX}" y="16" text-anchor="end" class="trend-value">Max: ${yen.format(max)}</text>
     </svg>
     <div class="trend-tooltip" hidden></div>
   `;
