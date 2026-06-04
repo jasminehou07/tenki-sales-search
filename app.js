@@ -5,6 +5,7 @@ const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
+const RANK_DATA_VERSION = "20260604-rank-fill-fallback";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -821,10 +822,9 @@ async function loadPeriodItems(dates) {
 }
 
 async function loadPeriodRankGaps(dates) {
-  const dateSet = new Set(dates);
   const months = monthsForDates(dates);
   const rowSets = await Promise.all(months.map((month) => loadRankGapMonth(month)));
-  return rowSets.flat().filter((row) => dateSet.has(row.date));
+  return rowSets.flat();
 }
 
 async function update() {
@@ -927,7 +927,7 @@ async function loadItemMonth(month) {
 
 async function loadRankGapMonth(month) {
   if (state.loadedRankGapMonths.has(month)) return state.loadedRankGapMonths.get(month);
-  const response = await fetch(`${RANK_GAP_URL}/${month}.csv`);
+  const response = await fetch(`${RANK_GAP_URL}/${month}.csv?v=${RANK_DATA_VERSION}`);
   if (!response.ok) {
     state.loadedRankGapMonths.set(month, []);
     return [];
@@ -1130,6 +1130,19 @@ function renderRankGapEstimates(rows, dates) {
     return;
   }
 
+  const fallbackByRank = new Map();
+  rows
+    .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20 && row.salesKnown)
+    .forEach((row) => {
+      const values = fallbackByRank.get(row.rank) || [];
+      values.push(row.sales);
+      fallbackByRank.set(row.rank, values);
+    });
+  fallbackByRank.forEach((values, rank) => {
+    values.sort((a, b) => a - b);
+    fallbackByRank.set(rank, values[Math.floor(values.length / 2)]);
+  });
+
   const byRank = new Map();
   filtered.forEach((row) => {
     const current = byRank.get(row.rank) || {
@@ -1165,14 +1178,16 @@ function renderRankGapEstimates(rows, dates) {
     const rank = index + 1;
     const row = byRank.get(rank) || { rank, shops: new Set(), sales: 0, salesKnown: false, estimatedSales: 0, estimateKnown: false, source: "missing" };
     const isActual = row.source === "actual";
-    const hasEstimatedSales = row.estimateKnown && !row.salesKnown;
+    const fallbackSales = fallbackByRank.get(rank);
+    const hasFallbackSales = !row.salesKnown && !row.estimateKnown && Number.isFinite(fallbackSales);
+    const hasEstimatedSales = (row.estimateKnown || hasFallbackSales) && !row.salesKnown;
     const isEstimated = row.source === "estimated" || hasEstimatedSales;
     const shopText = isActual ? [...row.shops].map((shop) => `Shop ${shop}`).join(", ") : "Unknown shop";
-    const displaySales = row.salesKnown ? row.sales : row.estimateKnown ? row.estimatedSales : null;
+    const displaySales = row.salesKnown ? row.sales : row.estimateKnown ? row.estimatedSales : hasFallbackSales ? fallbackSales : null;
     const source = isActual
       ? row.salesKnown
         ? `<span class="source-pill actual">TENKi actual</span>`
-        : row.estimateKnown
+        : row.estimateKnown || hasFallbackSales
           ? `<span class="source-pill estimated">Estimated</span>`
           : `<span class="source-pill actual">TENKi rank</span>`
       : isEstimated
