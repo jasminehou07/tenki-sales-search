@@ -700,6 +700,53 @@ function pointTooltip(point) {
   return `${point.label}\nSales: ${yen.format(point.value)}\n${promotionLine}`;
 }
 
+function compactYen(value) {
+  if (value >= 100000000) return `JPY ${(value / 100000000).toFixed(1)}B`;
+  if (value >= 1000000) return `JPY ${(value / 1000000).toFixed(0)}M`;
+  if (value >= 1000) return `JPY ${(value / 1000).toFixed(0)}K`;
+  return yen.format(value);
+}
+
+function positionTrendTooltip(tooltip, event) {
+  const chartRect = els.trendChart.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const targetRect = event.currentTarget?.getBoundingClientRect();
+  const clientX = event.clientX || (targetRect ? targetRect.left + targetRect.width / 2 : chartRect.left + 20);
+  const clientY = event.clientY || (targetRect ? targetRect.top + targetRect.height / 2 : chartRect.top + 20);
+  const x = Math.min(chartRect.width - tooltipRect.width - 12, Math.max(12, clientX - chartRect.left + 14));
+  const y = Math.min(chartRect.height - tooltipRect.height - 12, Math.max(12, clientY - chartRect.top - tooltipRect.height - 10));
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
+}
+
+function showTrendTooltip(point, tooltip, event) {
+  const lines = point.dataset.tooltip.split("\n");
+  tooltip.innerHTML = `
+    <strong>${escapeHtml(lines[0] || "")}</strong>
+    <span>${escapeHtml(lines[1] || "")}</span>
+    <span>${escapeHtml(lines[2] || "")}</span>
+  `;
+  tooltip.hidden = false;
+  positionTrendTooltip(tooltip, event);
+}
+
+function attachTrendTooltipHandlers() {
+  const tooltip = els.trendChart.querySelector(".trend-tooltip");
+  if (!tooltip) return;
+
+  els.trendChart.querySelectorAll(".trend-hover-target").forEach((point) => {
+    point.addEventListener("mouseenter", (event) => showTrendTooltip(point, tooltip, event));
+    point.addEventListener("mousemove", (event) => positionTrendTooltip(tooltip, event));
+    point.addEventListener("mouseleave", () => {
+      tooltip.hidden = true;
+    });
+    point.addEventListener("focus", (event) => showTrendTooltip(point, tooltip, event));
+    point.addEventListener("blur", () => {
+      tooltip.hidden = true;
+    });
+  });
+}
+
 function periodLabel(dates) {
   if (!dates.length) return "";
   if (dates.length === 1) return dates[0];
@@ -826,7 +873,7 @@ function renderTrendChart(rows, dates, label) {
   const max = Math.max(...values, 1);
   const width = 760;
   const height = 230;
-  const padX = 36;
+  const padX = 62;
   const padTop = 22;
   const padBottom = 44;
   const plotWidth = width - (padX * 2);
@@ -848,6 +895,10 @@ function renderTrendChart(rows, dates, label) {
   const peak = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
   const peakLabelX = Math.min(width - padX - 10, Math.max(padX + 74, peak.x));
   const peakLabelY = Math.max(30, peak.y - 12);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: max * ratio,
+    y: padTop + plotHeight - (plotHeight * ratio)
+  }));
   const ticks = points.filter((_, index) => (
     index === 0 || index === points.length - 1 || index === Math.floor((points.length - 1) / 2)
   ));
@@ -858,22 +909,41 @@ function renderTrendChart(rows, dates, label) {
 
   els.trendChart.innerHTML = `
     <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Daily sales trend chart">
-      <line x1="${padX}" y1="${height - padBottom}" x2="${width - padX}" y2="${height - padBottom}" class="trend-axis"></line>
-      <line x1="${padX}" y1="${padTop}" x2="${padX}" y2="${height - padBottom}" class="trend-axis"></line>
+      ${yTicks.map((tick) => `
+        <line x1="${padX}" y1="${tick.y.toFixed(1)}" x2="${width - padX}" y2="${tick.y.toFixed(1)}" class="trend-grid"></line>
+        <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
+      `).join("")}
       <polygon points="${area}" class="trend-area"></polygon>
       <polyline points="${line}" class="trend-line"></polyline>
-      ${points.map((point) => `
-        <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${point === peak ? 5 : 3.5}" class="trend-point">
-          <title>${escapeHtml(pointTooltip(point))}</title>
-        </circle>
-      `).join("")}
+      ${points.map((point) => {
+        const hasEvent = eventsForDates(point.dates).length > 0;
+        const tooltip = escapeHtml(pointTooltip(point));
+        return `
+          <circle
+            cx="${point.x.toFixed(1)}"
+            cy="${point.y.toFixed(1)}"
+            r="${point === peak ? 4.8 : hasEvent ? 3.6 : 2.6}"
+            class="trend-point${hasEvent ? " has-event" : ""}">
+          </circle>
+          <circle
+            cx="${point.x.toFixed(1)}"
+            cy="${point.y.toFixed(1)}"
+            r="9"
+            class="trend-hover-target${hasEvent ? " has-event" : ""}"
+            tabindex="0"
+            data-tooltip="${tooltip}">
+          </circle>
+        `;
+      }).join("")}
       ${ticks.map((point) => `
         <text x="${point.x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.label}</text>
       `).join("")}
       <text x="${width - padX}" y="16" text-anchor="end" class="trend-value">Max: ${yen.format(max)}</text>
       <text x="${peakLabelX.toFixed(1)}" y="${peakLabelY.toFixed(1)}" text-anchor="middle" class="trend-peak">${yen.format(peak.value)}</text>
     </svg>
+    <div class="trend-tooltip" hidden></div>
   `;
+  attachTrendTooltipHandlers();
 }
 
 function renderTopItems(rows) {
