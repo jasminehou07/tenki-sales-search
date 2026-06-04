@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260604-ranked-shops">
+  <link rel="stylesheet" href="styles.css?v=20260604-rank-table">
 </head>
 <body>
   <header class="app-header">
@@ -234,17 +234,15 @@
       <div class="panel rank-gap-panel">
         <div class="panel-heading rank-gap-heading">
           <div>
-            <h2>Ranked Shops and Estimated Missing Sales</h2>
+            <h2>Rank 1-20 Sales Estimate</h2>
             <span>Actual TENKi ranked shops plus estimated sales for missing ranks</span>
           </div>
-          <span id="rankGapCount">0 rank rows</span>
+          <span id="rankGapCount">Choose one genre</span>
         </div>
         <div class="table-wrap rank-gap-wrap">
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Genre</th>
                 <th>Rank</th>
                 <th>Shop</th>
                 <th>Sales</th>
@@ -252,7 +250,7 @@
               </tr>
             </thead>
             <tbody id="rankGapBody">
-              <tr><td colspan="6">Loading...</td></tr>
+              <tr><td colspan="4">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -268,6 +266,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260604-genre-sales-sort"></script>
+  <script src="app.js?v=20260604-rank-table"></script>
 </body>
 </html>

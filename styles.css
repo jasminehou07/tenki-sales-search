@@ -714,9 +714,7 @@ td:nth-child(3),
 .rank-gap-panel th:nth-child(2),
 .rank-gap-panel td:nth-child(2),
 .rank-gap-panel th:nth-child(4),
-.rank-gap-panel td:nth-child(4),
-.rank-gap-panel th:nth-child(6),
-.rank-gap-panel td:nth-child(6) {
+.rank-gap-panel td:nth-child(4) {
   text-align: left;
 }
 
@@ -753,7 +751,11 @@ td:nth-child(3),
 .source-pill.estimated {
   background: #f1edff;
   color: #5944d8;
-  margin-right: 6px;
+}
+
+.source-pill.missing {
+  background: #f1f3f5;
+  color: var(--muted);
 }
 
 .estimated-rank-row {

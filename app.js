@@ -888,7 +888,7 @@ function renderEmptyState() {
   els.topItemsCount.textContent = prompt;
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
   els.rankGapCount.textContent = prompt;
-  els.rankGapBody.innerHTML = `<tr><td colspan="6">${prompt} to see ranked shops and missing rank estimates.</td></tr>`;
+  els.rankGapBody.innerHTML = `<tr><td colspan="4">${prompt} to see rank 1-20 estimates.</td></tr>`;
 }
 
 function monthsForDates(dates) {
@@ -1087,32 +1087,60 @@ function renderTopItems(rows) {
 
 function renderRankGapEstimates(rows, dates) {
   const genre = els.genreSelect.value;
-  const filtered = rows
-    .filter((row) => genre === "all" || row.genre === genre)
-    .sort((a, b) => {
-      if (dates.length === 1 && genre !== "all") return a.rank - b.rank || a.source.localeCompare(b.source);
-      return b.date.localeCompare(a.date) || a.genre.localeCompare(b.genre) || a.rank - b.rank || a.source.localeCompare(b.source);
-    });
-  const topRows = filtered.slice(0, 50);
-  els.rankGapCount.textContent = `${whole.format(filtered.length)} rank rows`;
-
-  if (!topRows.length) {
-    els.rankGapBody.innerHTML = `<tr><td colspan="6">No rank rows found for ${periodLabel(dates)}.</td></tr>`;
+  if (genre === "all") {
+    els.rankGapCount.textContent = "Choose one genre";
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">Choose one product genre to see a rank 1-20 table.</td></tr>`;
     return;
   }
 
-  els.rankGapBody.innerHTML = topRows.map((row) => {
+  const availableRankDates = new Set(rows
+    .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20)
+    .map((row) => row.date));
+  const rankDate = [...dates].reverse().find((date) => availableRankDates.has(date));
+  if (!rankDate) {
+    els.rankGapCount.textContent = "No rank data";
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${periodLabel(dates)} and ${genreLabel(genre)}.</td></tr>`;
+    return;
+  }
+
+  const filtered = rows.filter((row) => row.date === rankDate && row.genre === genre && row.rank >= 1 && row.rank <= 20);
+  if (!filtered.length) {
+    els.rankGapCount.textContent = "No rank data";
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${rankDate} and ${genreLabel(genre)}.</td></tr>`;
+    return;
+  }
+
+  const byRank = new Map();
+  filtered.forEach((row) => {
+    const current = byRank.get(row.rank) || { rank: row.rank, shops: new Set(), sales: 0, source: "missing" };
+    if (row.source === "actual") {
+      current.source = "actual";
+      current.shops.add(row.shop);
+      current.sales += row.sales;
+    } else if (current.source !== "actual") {
+      current.source = "estimated";
+      current.sales = row.sales;
+    }
+    byRank.set(row.rank, current);
+  });
+
+  els.rankGapCount.textContent = `Ranks 1-20 for ${rankDate}`;
+  els.rankGapBody.innerHTML = Array.from({ length: 20 }, (_, index) => {
+    const rank = index + 1;
+    const row = byRank.get(rank) || { rank, shops: new Set(), sales: 0, source: "missing" };
     const isActual = row.source === "actual";
+    const isEstimated = row.source === "estimated";
+    const shopText = isActual ? [...row.shops].map((shop) => `Shop ${shop}`).join(", ") : "Unknown shop";
     const source = isActual
       ? `<span class="source-pill actual">TENKi actual</span>`
-      : `<span class="source-pill estimated">Estimated</span> <small>#${whole.format(row.lowerRank)} (${yen.format(row.lowerSales)}) to #${whole.format(row.upperRank)} (${yen.format(row.upperSales)})</small>`;
+      : isEstimated
+        ? `<span class="source-pill estimated">Estimated</span>`
+        : `<span class="source-pill missing">No estimate</span>`;
     return `
-      <tr class="${isActual ? "actual-rank-row" : "estimated-rank-row"}">
-        <td>${row.date}</td>
-        <td>${genreLabel(row.genre)}</td>
-        <td>#${whole.format(row.rank)}</td>
-        <td>${isActual ? `Shop ${row.shop}` : "Unknown shop"}</td>
-        <td>${yen.format(row.sales)}</td>
+      <tr class="${isActual ? "actual-rank-row" : isEstimated ? "estimated-rank-row" : "missing-rank-row"}">
+        <td>#${whole.format(rank)}</td>
+        <td>${isActual || isEstimated ? shopText : "-"}</td>
+        <td>${isActual || isEstimated ? yen.format(row.sales) : "-"}</td>
         <td>${source}</td>
       </tr>
     `;
