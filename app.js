@@ -1144,8 +1144,13 @@ els.endDateInput.addEventListener("input", () => {
   syncDateRangeLabel();
 });
 
-els.dateRangeButton.addEventListener("click", () => {
+els.dateRangeButton.addEventListener("click", (event) => {
+  event.stopPropagation();
   setDatePopoverOpen(els.datePopover.hidden);
+});
+
+els.datePopover.addEventListener("click", (event) => {
+  event.stopPropagation();
 });
 
 els.clearDateButton.addEventListener("click", () => {
@@ -1166,6 +1171,7 @@ els.applyDateButton.addEventListener("click", () => {
 });
 
 els.dateCalendarGrid.addEventListener("click", (event) => {
+  event.stopPropagation();
   const button = event.target.closest(".calendar-day");
   if (!button || button.disabled) return;
   stageCalendarDate(button.dataset.date);
