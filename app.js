@@ -782,6 +782,8 @@ function renderTrendChart(rows, dates, label) {
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
   const peak = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
+  const peakLabelX = Math.min(width - padX - 10, Math.max(padX + 74, peak.x));
+  const peakLabelY = Math.max(30, peak.y - 12);
   const ticks = points.filter((_, index) => (
     index === 0 || index === points.length - 1 || index === Math.floor((points.length - 1) / 2)
   ));
@@ -804,8 +806,8 @@ function renderTrendChart(rows, dates, label) {
       ${ticks.map((point) => `
         <text x="${point.x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.label}</text>
       `).join("")}
-      <text x="${padX}" y="15" class="trend-value">${yen.format(max)}</text>
-      <text x="${peak.x.toFixed(1)}" y="${Math.max(14, peak.y - 10).toFixed(1)}" text-anchor="middle" class="trend-peak">${yen.format(peak.value)}</text>
+      <text x="${width - padX}" y="16" text-anchor="end" class="trend-value">Max: ${yen.format(max)}</text>
+      <text x="${peakLabelX.toFixed(1)}" y="${peakLabelY.toFixed(1)}" text-anchor="middle" class="trend-peak">${yen.format(peak.value)}</text>
     </svg>
   `;
 }
