@@ -2799,106 +2799,106 @@ date,2018-11-02,2018-11-02,564609
 date,2018-12-03,2018-12-03,521737
 date,2018-10-12,2018-10-12,501612
 date,2018-11-03,2018-11-03,494947
-genre,101384,旅行券・ホテル券・航空券,6815450700
-genre,201184,白米,3557275299
-genre,560271,ケース・カバー,3035869920
-genre,207774,サケ,2193374843
-genre,204586,炊飯器,1996721099
-genre,567664,スパークリングワイン・シャンパンセット,1724165479
-genre,563342,スパークリングワイン・シャンパン,1624395238
-genre,301577,スーツケース・キャリーバッグ,1426113908
-genre,205582,枕,1344284921
-genre,206440,パンツ,1272565759
-genre,558873,コート・ジャケット,1244309972
-genre,502835,ヘッドホン・イヤホン,1081777369
-genre,110409,ホタテ,1053058820
-genre,506539,ドリップバッグ,1016170811
-genre,567662,白ワインセット,1010487485
-genre,563339,赤ワイン,988924167
-genre,551180,Tシャツ・カットソー,914356983
-genre,566403,本体,879772022
-genre,501098,トイレットペーパー,862851400
-genre,551228,カーペット・ラグ,834507653
-genre,507843,育毛・養毛剤,810331714
-genre,508456,シャワーヘッド,785861882
-genre,100992,ビタミンC,756053245
-genre,558846,ズボン・パンツ,747892875
-genre,206363,ワイシャツ,735604937
-genre,509434,AC式充電器,720436465
-genre,206471,シャツ・ブラウス,682731481
-genre,201351,水・炭酸水,652538667
-genre,214099,カレー,638715359
-genre,205611,毛布・ブランケット,620098596
-genre,215913,両手鍋,610685695
-genre,101535,セット・詰め合わせ,584461514
-genre,216424,フェイスクリーム,557901624
-genre,206361,スーツ,549124672
-genre,567251,マヌカハニー,526936012
-genre,562641,電気給湯器,516780913
-genre,565724,キャットフード,496591403
-genre,210022,バッテリー本体,480316746
-genre,564286,ミラーレス一眼カメラ,464735189
-genre,566647,蒲焼き,461173329
-genre,101954,カタログギフト・チケット - その他,451455161
-genre,502280,バックパック・リュック,444237561
-genre,511293,新ジャンル・第3のビール,414332166
-genre,216173,インソール・中敷き,396796378
-genre,110632,発泡酒,390591740
-genre,558754,第二類医薬品,377638860
-genre,201486,ビタミンD,369233188
-genre,509417,カールアイロン,365796561
-genre,563689,掛け布団,355913288
-genre,402279,大人用水筒・マグボトル,353205302
-genre,100487,指輪・リング,343808230
-genre,201925,クーラーボックス,338424935
-genre,567538,シャンプー・トリートメントセット,330136854
-genre,204964,ボール,325528904
-genre,207802,肩ロース,320951618
-genre,506536,炭酸飲料,314988649
-genre,567434,クリーニング,312385804
-genre,567665,モルト・ウイスキー,302541982
-genre,208532,メンズシェーバー,299826844
-genre,205272,積み木,295829163
-genre,407120,アロマディフューザー,291406639
-genre,551732,バスタオル,280645083
-genre,214781,青汁,278205002
-genre,554973,GPSナビ,276934233
-genre,304080,ビジネスシューズ,274338580
-genre,564895,スマートウォッチ本体,273091068
-genre,215430,ソファセット,270065074
-genre,564647,ご飯パック,263372455
-genre,510003,まつげ・まゆげ美容液,261625144
-genre,201632,ぬいぐるみ,258611145
-genre,110435,タン,256726869
-genre,507515,ゲート,253080172
-genre,210413,発電機・ポータブル電源 - その他,246764537
-genre,205761,入浴剤,243245315
-genre,401131,カバーオール・ロンパース,242222929
-genre,508599,ネックレスチェーン,240109869
-genre,101020,プロバイオティクス - その他,238008824
-genre,551736,フェイスタオル,232431286
-genre,202502,フラワーアレンジメント,230608966
-genre,212377,ホットプレート,229455503
-genre,502221,ビジネスバッグ・ブリーフケース,226066116
-genre,408789,トートバッグ,224678688
-genre,567645,植物茶,220802045
-genre,567554,セット,218444275
-genre,216158,コンフォートサンダル,216273473
-genre,555421,ドアホン・インターホン,215183114
-genre,207288,キーホルダー,213822070
-genre,110365,ストラップ・マスコット,212878839
-genre,566061,あごだし,211557986
-genre,555003,カートリッジ,209166607
-genre,567623,アミノ酸 - その他,205019476
-genre,207966,ユーティリティ,204028665
-genre,214104,ハンバーグ,202924806
-genre,200181,スポーツ器具 - その他,199081620
-genre,304763,足用消臭パウダー,195929377
-genre,100181,掃除機・クリーナー - その他,192625062
-genre,506012,レーザー距離計,190053376
-genre,402018,キッズ・ジュニア用自転車,189589461
-genre,401534,エプロン,186997757
-genre,204934,ウェッジ,185099183
+genre,101384,旅行券・ホテル券・航空券 (Travel / hotel / airline vouchers),6815450700
+genre,201184,白米 (White rice),3557275299
+genre,560271,ケース・カバー (Cases and covers),3035869920
+genre,207774,サケ (Salmon),2193374843
+genre,204586,炊飯器 (Rice cookers),1996721099
+genre,567664,スパークリングワイン・シャンパンセット (Sparkling wine and champagne sets),1724165479
+genre,563342,スパークリングワイン・シャンパン (Sparkling wine and champagne),1624395238
+genre,301577,スーツケース・キャリーバッグ (Suitcases and carry-on bags),1426113908
+genre,205582,枕 (Pillows),1344284921
+genre,206440,パンツ (Pants),1272565759
+genre,558873,コート・ジャケット (Coats and jackets),1244309972
+genre,502835,ヘッドホン・イヤホン (Headphones and earphones),1081777369
+genre,110409,ホタテ (Scallops),1053058820
+genre,506539,ドリップバッグ (Drip coffee bags),1016170811
+genre,567662,白ワインセット (White wine sets),1010487485
+genre,563339,赤ワイン (Red wine),988924167
+genre,551180,Tシャツ・カットソー (T-shirts and cut-and-sew tops),914356983
+genre,566403,本体 (Main units),879772022
+genre,501098,トイレットペーパー (Toilet paper),862851400
+genre,551228,カーペット・ラグ (Carpets and rugs),834507653
+genre,507843,育毛・養毛剤 (Hair growth treatments),810331714
+genre,508456,シャワーヘッド (Shower heads),785861882
+genre,100992,ビタミンC (Vitamin C),756053245
+genre,558846,ズボン・パンツ (Trousers and pants),747892875
+genre,206363,ワイシャツ (Dress shirts),735604937
+genre,509434,AC式充電器 (AC chargers),720436465
+genre,206471,シャツ・ブラウス (Shirts and blouses),682731481
+genre,201351,水・炭酸水 (Water and sparkling water),652538667
+genre,214099,カレー (Curry),638715359
+genre,205611,毛布・ブランケット (Blankets),620098596
+genre,215913,両手鍋 (Two-handled pots),610685695
+genre,101535,セット・詰め合わせ (Sets and assortments),584461514
+genre,216424,フェイスクリーム (Face cream),557901624
+genre,206361,スーツ (Suits),549124672
+genre,567251,マヌカハニー (Manuka honey),526936012
+genre,562641,電気給湯器 (Electric water heaters),516780913
+genre,565724,キャットフード (Cat food),496591403
+genre,210022,バッテリー本体 (Batteries),480316746
+genre,564286,ミラーレス一眼カメラ (Mirrorless cameras),464735189
+genre,566647,蒲焼き (Kabayaki grilled eel),461173329
+genre,101954,カタログギフト・チケット - その他 (Catalog gifts and tickets - other),451455161
+genre,502280,バックパック・リュック (Backpacks and rucksacks),444237561
+genre,511293,新ジャンル・第3のビール (Third-category beer),414332166
+genre,216173,インソール・中敷き (Insoles),396796378
+genre,110632,発泡酒 (Happoshu low-malt beer),390591740
+genre,558754,第二類医薬品 (Class-2 OTC medicine),377638860
+genre,201486,ビタミンD (Vitamin D),369233188
+genre,509417,カールアイロン (Curling irons),365796561
+genre,563689,掛け布団 (Comforters),355913288
+genre,402279,大人用水筒・マグボトル (Adult water bottles and mugs),353205302
+genre,100487,指輪・リング (Rings),343808230
+genre,201925,クーラーボックス (Cooler boxes),338424935
+genre,567538,シャンプー・トリートメントセット (Shampoo and conditioner sets),330136854
+genre,204964,ボール (Balls),325528904
+genre,207802,肩ロース (Shoulder loin),320951618
+genre,506536,炭酸飲料 (Carbonated drinks),314988649
+genre,567434,クリーニング (Cleaning services),312385804
+genre,567665,モルト・ウイスキー (Malt whisky),302541982
+genre,208532,メンズシェーバー (Men’s electric shavers),299826844
+genre,205272,積み木 (Building blocks),295829163
+genre,407120,アロマディフューザー (Aroma diffusers),291406639
+genre,551732,バスタオル (Bath towels),280645083
+genre,214781,青汁 (Aojiru green juice),278205002
+genre,554973,GPSナビ (GPS navigation),276934233
+genre,304080,ビジネスシューズ (Business shoes),274338580
+genre,564895,スマートウォッチ本体 (Smartwatch bodies),273091068
+genre,215430,ソファセット (Sofa sets),270065074
+genre,564647,ご飯パック (Packaged rice),263372455
+genre,510003,まつげ・まゆげ美容液 (Eyelash and eyebrow serum),261625144
+genre,201632,ぬいぐるみ (Stuffed toys),258611145
+genre,110435,タン (Tongue),256726869
+genre,507515,ゲート (Gates),253080172
+genre,210413,発電機・ポータブル電源 - その他 (Generators and portable power - other),246764537
+genre,205761,入浴剤 (Bath additives),243245315
+genre,401131,カバーオール・ロンパース (Coveralls and rompers),242222929
+genre,508599,ネックレスチェーン (Necklace chains),240109869
+genre,101020,プロバイオティクス - その他 (Probiotics - other),238008824
+genre,551736,フェイスタオル (Face towels),232431286
+genre,202502,フラワーアレンジメント (Flower arrangements),230608966
+genre,212377,ホットプレート (Hot plates),229455503
+genre,502221,ビジネスバッグ・ブリーフケース (Business bags and briefcases),226066116
+genre,408789,トートバッグ (Tote bags),224678688
+genre,567645,植物茶 (Herbal teas),220802045
+genre,567554,セット (Sets),218444275
+genre,216158,コンフォートサンダル (Comfort sandals),216273473
+genre,555421,ドアホン・インターホン (Doorphones and intercoms),215183114
+genre,207288,キーホルダー (Keychains),213822070
+genre,110365,ストラップ・マスコット (Straps and mascots),212878839
+genre,566061,あごだし (Flying fish broth),211557986
+genre,555003,カートリッジ (Cartridges),209166607
+genre,567623,アミノ酸 - その他 (Amino acids - other),205019476
+genre,207966,ユーティリティ (Utility clubs),204028665
+genre,214104,ハンバーグ (Hamburger steaks),202924806
+genre,200181,スポーツ器具 - その他 (Sports equipment - other),199081620
+genre,304763,足用消臭パウダー (Foot deodorant powder),195929377
+genre,100181,掃除機・クリーナー - その他 (Vacuum cleaners - other),192625062
+genre,506012,レーザー距離計 (Laser rangefinders),190053376
+genre,402018,キッズ・ジュニア用自転車 (Kids and junior bicycles),189589461
+genre,401534,エプロン (Aprons),186997757
+genre,204934,ウェッジ (Wedges),185099183
 shop,28239,Shop 28239,3163667500
 shop,525,Shop 525,3045816009
 shop,1610,Shop 1610,2802566461
