@@ -9,6 +9,7 @@ const state = {
   events: [],
   loadedDates: new Map(),
   loadedItemDates: new Map(),
+  genreLabels: new Map(),
   byDate: new Map(),
   byShop: new Map(),
   byGenre: new Map()
@@ -272,6 +273,10 @@ function itemFromCsv(row) {
   };
 }
 
+function genreLabel(id) {
+  return state.genreLabels.get(String(id)) || `Genre ${id}`;
+}
+
 async function update() {
   const genre = els.genreSelect.value;
   const shop = els.shopSelect.value;
@@ -359,7 +364,7 @@ function renderTopItems(rows) {
       <td>${index + 1}</td>
       <td>Item ${row.item}</td>
       <td>Shop ${row.shop}</td>
-      <td>Product genre ${row.genre}</td>
+      <td>${genreLabel(row.genre)}</td>
       <td>${yen.format(row.sales)}</td>
       <td>${whole.format(row.units)}</td>
     </tr>
@@ -495,7 +500,9 @@ async function init() {
     ]);
 
     const options = parseCsv(optionsText);
-    addOptions(els.genreSelect, options.filter((row) => row.type === "genre"));
+    const genreOptions = options.filter((row) => row.type === "genre");
+    state.genreLabels = new Map(genreOptions.map((row) => [row.id, row.label]));
+    addOptions(els.genreSelect, genreOptions);
     addOptions(els.shopSelect, options.filter((row) => row.type === "shop"));
     const dateRows = options.filter((row) => row.type === "date");
     buildDateControls(dateRows);
