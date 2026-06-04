@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260604-monthly">
+  <link rel="stylesheet" href="styles.css?v=20260604-trend-date-tools">
 </head>
 <body>
   <header class="app-header">
@@ -79,7 +79,37 @@
           </select>
         </label>
       </div>
+      <div class="date-helper-grid">
+        <div class="quick-ranges" aria-label="Quick date ranges">
+          <button class="quick-range-button" type="button" data-range-days="1" disabled>Past 1 day</button>
+          <button class="quick-range-button" type="button" data-range-days="7" disabled>Past week</button>
+          <button class="quick-range-button" type="button" data-range-days="30" disabled>Past 30 days</button>
+          <button class="quick-range-button" type="button" data-range-days="month" disabled>Latest month</button>
+        </div>
+        <div class="calendar-controls" aria-label="Calendar date selection">
+          <label>
+            Calendar date
+            <input id="startDateInput" type="date" disabled>
+          </label>
+          <label class="range-filter">
+            End date
+            <input id="endDateInput" type="date" disabled>
+          </label>
+        </div>
+      </div>
       <button id="resetButton" type="button" disabled>Reset</button>
+    </section>
+
+    <section class="panel trend-panel" aria-label="Sales trend">
+      <div class="panel-heading">
+        <div>
+          <h2>Sales Trend</h2>
+          <span id="trendSubtitle">Choose a day or period</span>
+        </div>
+      </div>
+      <div id="trendChart" class="trend-chart">
+        <div class="empty">Loading...</div>
+      </div>
     </section>
 
     <section class="metrics" aria-label="Search result totals">
@@ -176,6 +206,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260604-monthly"></script>
+  <script src="app.js?v=20260604-trend-date-tools"></script>
 </body>
 </html>

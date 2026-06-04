@@ -26,12 +26,17 @@ const els = {
   endYearSelect: document.getElementById("endYearSelect"),
   endMonthSelect: document.getElementById("endMonthSelect"),
   endDaySelect: document.getElementById("endDaySelect"),
+  startDateInput: document.getElementById("startDateInput"),
+  endDateInput: document.getElementById("endDateInput"),
+  quickRangeButtons: document.querySelectorAll(".quick-range-button"),
   compareYearSelect: document.getElementById("compareYearSelect"),
   compareMonthSelect: document.getElementById("compareMonthSelect"),
   compareDaySelect: document.getElementById("compareDaySelect"),
   resetButton: document.getElementById("resetButton"),
   salesMetric: document.getElementById("salesMetric"),
   unitsMetric: document.getElementById("unitsMetric"),
+  trendChart: document.getElementById("trendChart"),
+  trendSubtitle: document.getElementById("trendSubtitle"),
   shopCompareBody: document.getElementById("shopCompareBody"),
   shopCompareCount: document.getElementById("shopCompareCount"),
   dayCompareBody: document.getElementById("dayCompareBody"),
@@ -68,10 +73,14 @@ function setEnabled(enabled) {
   [
     els.genreSelect, els.shopSelect, els.dateModeSelect, els.yearSelect, els.monthSelect, els.daySelect,
     els.endYearSelect, els.endMonthSelect, els.endDaySelect,
+    els.startDateInput, els.endDateInput,
     els.compareYearSelect, els.compareMonthSelect, els.compareDaySelect,
     els.resetButton
   ].forEach((el) => {
     el.disabled = !enabled;
+  });
+  els.quickRangeButtons.forEach((button) => {
+    button.disabled = !enabled;
   });
 }
 
@@ -83,6 +92,11 @@ function selectedDate() {
 function selectedEndDate() {
   if (!els.endYearSelect.value || !els.endMonthSelect.value || !els.endDaySelect.value) return "";
   return `${els.endYearSelect.value}-${els.endMonthSelect.value}-${els.endDaySelect.value}`;
+}
+
+function syncCalendarInputs() {
+  els.startDateInput.value = selectedDate();
+  els.endDateInput.value = selectedEndDate();
 }
 
 function isRangeMode() {
@@ -97,6 +111,9 @@ function selectedCompareDate() {
 function buildDateControls(dateRows) {
   state.dates = dateRows.map((row) => row.id).sort((a, b) => b.localeCompare(a));
   state.availableDates = new Set(state.dates);
+  const sortedDates = [...state.dates].sort((a, b) => a.localeCompare(b));
+  state.firstDate = sortedDates[0] || "";
+  state.latestDate = sortedDates[sortedDates.length - 1] || "";
   const years = [...new Set(state.dates.map((date) => date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
 
   els.yearSelect.innerHTML = `<option value="">Year</option>`;
@@ -109,6 +126,10 @@ function buildDateControls(dateRows) {
     els.yearSelect.appendChild(option);
     els.endYearSelect.appendChild(option.cloneNode(true));
     els.compareYearSelect.appendChild(option.cloneNode(true));
+  });
+  [els.startDateInput, els.endDateInput].forEach((input) => {
+    input.min = state.firstDate;
+    input.max = state.latestDate;
   });
 }
 
@@ -257,6 +278,7 @@ function setDateParts(date) {
     els.daySelect.innerHTML = `<option value="">Day</option>`;
     els.daySelect.value = "";
     els.daySelect.selectedIndex = 0;
+    els.startDateInput.value = "";
     return;
   }
 
@@ -266,6 +288,7 @@ function setDateParts(date) {
   els.monthSelect.value = month;
   refreshDayOptions(false);
   els.daySelect.value = day;
+  els.startDateInput.value = date;
 }
 
 function setCompareDateParts(date) {
@@ -299,6 +322,7 @@ function setEndDateParts(date) {
     els.endDaySelect.innerHTML = `<option value="">Day</option>`;
     els.endDaySelect.value = "";
     els.endDaySelect.selectedIndex = 0;
+    els.endDateInput.value = "";
     return;
   }
 
@@ -308,6 +332,7 @@ function setEndDateParts(date) {
   els.endMonthSelect.value = month;
   refreshEndDayOptions(false);
   els.endDaySelect.value = day;
+  els.endDateInput.value = date;
 }
 
 function nearestComparisonDate(date) {
@@ -366,6 +391,11 @@ function genreLabel(id) {
 
 function syncRangeControls() {
   document.body.classList.toggle("range-mode", isRangeMode());
+  const isRange = isRangeMode();
+  const startLabel = els.startDateInput.closest("label");
+  if (startLabel) {
+    startLabel.firstChild.nodeValue = isRange ? "Start date" : "Calendar date";
+  }
 }
 
 function selectedPeriodDates() {
@@ -381,6 +411,57 @@ function selectedPeriodDates() {
   return state.dates
     .filter((date) => date >= first && date <= last)
     .sort((a, b) => a.localeCompare(b));
+}
+
+function datesEndingOn(endDate, count) {
+  if (!endDate || !state.availableDates.has(endDate)) return [];
+  return state.dates
+    .filter((date) => date <= endDate)
+    .sort((a, b) => b.localeCompare(a))
+    .slice(0, count)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function latestMonthDates() {
+  if (!state.latestDate) return [];
+  const month = state.latestDate.slice(0, 7);
+  return state.dates
+    .filter((date) => date.startsWith(month))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function applyPeriodDates(dates) {
+  if (!dates.length) return;
+  if (dates.length === 1) {
+    els.dateModeSelect.value = "day";
+    syncRangeControls();
+    setDateParts(dates[0]);
+    setEndDateParts("");
+    keepComparisonDateDifferent();
+    update();
+    return;
+  }
+
+  els.dateModeSelect.value = "range";
+  syncRangeControls();
+  setDateParts(dates[0]);
+  setEndDateParts(dates[dates.length - 1]);
+  keepComparisonDateDifferent();
+  update();
+}
+
+function nearestAvailableDate(date) {
+  if (!date) return "";
+  if (state.availableDates.has(date)) return date;
+  return [...state.dates]
+    .sort((a, b) => a.localeCompare(b))
+    .find((availableDate) => availableDate >= date) || state.latestDate || "";
+}
+
+function trendDatesForPeriod(periodDates) {
+  if (!periodDates.length) return [];
+  if (periodDates.length > 1) return periodDates;
+  return datesEndingOn(periodDates[0], 14);
 }
 
 function periodLabel(dates) {
@@ -417,14 +498,21 @@ async function update() {
     return;
   }
 
-  const [dateRows, itemRows] = await Promise.all([loadPeriodDates(periodDates), loadPeriodItems(periodDates)]);
+  const chartDates = trendDatesForPeriod(periodDates);
+  const [dateRows, itemRows, chartRows] = await Promise.all([
+    loadPeriodDates(periodDates),
+    loadPeriodItems(periodDates),
+    loadPeriodDates(chartDates)
+  ]);
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
+  const trendRows = filterRows(chartRows, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
   renderSummary(baseRows);
+  renderTrendChart(trendRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
@@ -445,6 +533,8 @@ function filterRows(rows, filters) {
 function renderEmptyState() {
   els.salesMetric.textContent = "-";
   els.unitsMetric.textContent = "-";
+  els.trendSubtitle.textContent = "Choose a day or period";
+  els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
   const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
   els.shopCompareCount.textContent = prompt;
   els.shopCompareBody.innerHTML = `<tr><td colspan="5">${prompt} to compare shops.</td></tr>`;
@@ -485,6 +575,62 @@ function renderSummary(rows) {
 
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
+}
+
+function renderTrendChart(rows, dates, label) {
+  if (!dates.length) {
+    els.trendSubtitle.textContent = "Choose a day or period";
+    els.trendChart.innerHTML = `<div class="empty">Choose dates to see sales trends.</div>`;
+    return;
+  }
+
+  const salesByDate = new Map(dates.map((date) => [date, 0]));
+  rows.forEach((row) => {
+    salesByDate.set(row.date, (salesByDate.get(row.date) || 0) + row.sales);
+  });
+  const values = dates.map((date) => salesByDate.get(date) || 0);
+  const max = Math.max(...values, 1);
+  const width = 760;
+  const height = 230;
+  const padX = 36;
+  const padTop = 22;
+  const padBottom = 44;
+  const plotWidth = width - (padX * 2);
+  const plotHeight = height - padTop - padBottom;
+  const points = values.map((value, index) => {
+    const x = dates.length === 1 ? width / 2 : padX + (plotWidth * index) / (dates.length - 1);
+    const y = padTop + plotHeight - ((value / max) * plotHeight);
+    return { x, y, value, date: dates[index] };
+  });
+  const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
+  const peak = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
+  const ticks = points.filter((_, index) => (
+    index === 0 || index === points.length - 1 || index === Math.floor((points.length - 1) / 2)
+  ));
+
+  els.trendSubtitle.textContent = dates.length === 1
+    ? `${label} sales`
+    : `${dates[0]} to ${dates[dates.length - 1]} daily sales`;
+
+  els.trendChart.innerHTML = `
+    <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Daily sales trend chart">
+      <line x1="${padX}" y1="${height - padBottom}" x2="${width - padX}" y2="${height - padBottom}" class="trend-axis"></line>
+      <line x1="${padX}" y1="${padTop}" x2="${padX}" y2="${height - padBottom}" class="trend-axis"></line>
+      <polygon points="${area}" class="trend-area"></polygon>
+      <polyline points="${line}" class="trend-line"></polyline>
+      ${points.map((point) => `
+        <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${point === peak ? 5 : 3.5}" class="trend-point">
+          <title>${point.date}: ${yen.format(point.value)}</title>
+        </circle>
+      `).join("")}
+      ${ticks.map((point) => `
+        <text x="${point.x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.date.slice(5)}</text>
+      `).join("")}
+      <text x="${padX}" y="15" class="trend-value">${yen.format(max)}</text>
+      <text x="${peak.x.toFixed(1)}" y="${Math.max(14, peak.y - 10).toFixed(1)}" text-anchor="middle" class="trend-peak">${yen.format(peak.value)}</text>
+    </svg>
+  `;
 }
 
 function renderTopItems(rows) {
@@ -683,17 +829,20 @@ els.dateModeSelect.addEventListener("input", () => {
 els.yearSelect.addEventListener("input", () => {
   refreshMonthOptions(false);
   refreshDayOptions(false);
+  syncCalendarInputs();
   keepComparisonDateDifferent();
   update();
 });
 
 els.monthSelect.addEventListener("input", () => {
   refreshDayOptions(false);
+  syncCalendarInputs();
   keepComparisonDateDifferent();
   update();
 });
 
 els.daySelect.addEventListener("input", () => {
+  syncCalendarInputs();
   keepComparisonDateDifferent();
   update();
 });
@@ -701,15 +850,39 @@ els.daySelect.addEventListener("input", () => {
 els.endYearSelect.addEventListener("input", () => {
   refreshEndMonthOptions(false);
   refreshEndDayOptions(false);
+  syncCalendarInputs();
   update();
 });
 
 els.endMonthSelect.addEventListener("input", () => {
   refreshEndDayOptions(false);
+  syncCalendarInputs();
   update();
 });
 
-els.endDaySelect.addEventListener("input", () => update());
+els.endDaySelect.addEventListener("input", () => {
+  syncCalendarInputs();
+  update();
+});
+
+els.startDateInput.addEventListener("input", () => {
+  const date = nearestAvailableDate(els.startDateInput.value);
+  if (!date) return;
+  setDateParts(date);
+  keepComparisonDateDifferent();
+  update();
+});
+
+els.endDateInput.addEventListener("input", () => {
+  const date = nearestAvailableDate(els.endDateInput.value);
+  if (!date) return;
+  if (!isRangeMode()) {
+    els.dateModeSelect.value = "range";
+    syncRangeControls();
+  }
+  setEndDateParts(date);
+  update();
+});
 
 els.compareYearSelect.addEventListener("input", () => {
   refreshCompareMonthOptions(false);
@@ -727,6 +900,16 @@ els.compareDaySelect.addEventListener("input", () => update());
 els.resetButton.addEventListener("click", () => {
   resetFilters();
   update();
+});
+
+els.quickRangeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const range = button.dataset.rangeDays;
+    const dates = range === "month"
+      ? latestMonthDates()
+      : datesEndingOn(state.latestDate, Number(range));
+    applyPeriodDates(dates);
+  });
 });
 
 init();

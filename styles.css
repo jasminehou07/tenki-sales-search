@@ -87,6 +87,36 @@ main {
   background: #fbfcfd;
 }
 
+.date-helper-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(280px, 1.1fr) minmax(320px, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.quick-ranges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quick-range-button {
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.calendar-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body:not(.range-mode) .calendar-controls {
+  grid-template-columns: minmax(180px, 1fr);
+}
+
 .range-filter {
   display: none;
 }
@@ -143,6 +173,67 @@ input:disabled {
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.trend-panel {
+  margin-bottom: 16px;
+}
+
+.trend-panel .panel-heading {
+  align-items: start;
+}
+
+.trend-panel .panel-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.trend-chart {
+  min-height: 250px;
+  padding: 14px 16px 16px;
+}
+
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: 250px;
+}
+
+.trend-axis {
+  stroke: #d8dee6;
+  stroke-width: 1;
+}
+
+.trend-area {
+  fill: #dff3ef;
+  opacity: 0.9;
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.trend-point {
+  fill: #ffffff;
+  stroke: var(--accent-strong);
+  stroke-width: 2;
+}
+
+.trend-tick,
+.trend-value {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trend-peak {
+  fill: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .metrics article,
@@ -375,7 +466,8 @@ thead th {
 
   .filters,
   .metrics,
-  .comparison-grid {
+  .comparison-grid,
+  .date-helper-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -392,6 +484,10 @@ thead th {
     width: 100%;
   }
 
+  .quick-ranges {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .panel {
     margin-top: 16px;
   }
@@ -403,7 +499,9 @@ thead th {
   }
 
   .day-compare-summary,
-  .change-line {
+  .change-line,
+  .date-helper-grid,
+  .calendar-controls {
     grid-template-columns: 1fr;
   }
 }
