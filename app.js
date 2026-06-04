@@ -76,6 +76,14 @@ function addOptions(select, rows) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 function setEnabled(enabled) {
   [
     els.genreSelect, els.shopSelect, els.dateModeSelect, els.yearSelect, els.monthSelect, els.daySelect,
@@ -663,8 +671,9 @@ function aggregateTrendRows(rows, dates, granularity) {
   dates.forEach((date) => {
     const key = bucketKeyForDate(date, granularity);
     if (!buckets.has(key)) {
-      buckets.set(key, { key, label: bucketLabel(key, granularity), sales: 0 });
+      buckets.set(key, { key, label: bucketLabel(key, granularity), dates: [], sales: 0 });
     }
+    buckets.get(key).dates.push(date);
   });
   rows.forEach((row) => {
     const key = bucketKeyForDate(row.date, granularity);
@@ -672,6 +681,23 @@ function aggregateTrendRows(rows, dates, granularity) {
     if (bucket) bucket.sales += row.sales;
   });
   return [...buckets.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function eventsForDates(dates) {
+  if (!dates.length) return [];
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  return state.events
+    .filter((event) => event.start_date <= last && event.end_date >= first)
+    .map((event) => event.name);
+}
+
+function pointTooltip(point) {
+  const events = eventsForDates(point.dates);
+  const promotionLine = events.length
+    ? `Promotion/event: ${events.join(", ")}`
+    : "Promotion/event: No promotion listed";
+  return `${point.label}\nSales: ${yen.format(point.value)}\n${promotionLine}`;
 }
 
 function periodLabel(dates) {
@@ -808,7 +834,14 @@ function renderTrendChart(rows, dates, label) {
   const points = values.map((value, index) => {
     const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
     const y = padTop + plotHeight - ((value / max) * plotHeight);
-    return { x, y, value, label: buckets[index].label, key: buckets[index].key };
+    return {
+      x,
+      y,
+      value,
+      label: buckets[index].label,
+      key: buckets[index].key,
+      dates: buckets[index].dates
+    };
   });
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
@@ -831,7 +864,7 @@ function renderTrendChart(rows, dates, label) {
       <polyline points="${line}" class="trend-line"></polyline>
       ${points.map((point) => `
         <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${point === peak ? 5 : 3.5}" class="trend-point">
-          <title>${point.label}: ${yen.format(point.value)}</title>
+          <title>${escapeHtml(pointTooltip(point))}</title>
         </circle>
       `).join("")}
       ${ticks.map((point) => `
