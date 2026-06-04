@@ -1255,7 +1255,9 @@ async function init() {
     ]);
 
     const options = parseCsv(optionsText);
-    const genreOptions = options.filter((row) => row.type === "genre");
+    const genreOptions = options
+      .filter((row) => row.type === "genre")
+      .sort((a, b) => (Number(b.sales) || 0) - (Number(a.sales) || 0) || a.label.localeCompare(b.label));
     state.genreLabels = new Map(genreOptions.map((row) => [row.id, row.label]));
     addOptions(els.genreSelect, genreOptions);
     addOptions(els.shopSelect, options.filter((row) => row.type === "shop"));
