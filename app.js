@@ -794,6 +794,14 @@ function periodLabel(dates) {
   return `${dates[0]} to ${dates[dates.length - 1]}`;
 }
 
+function isAllTimeView(dates) {
+  if (!dates.length || !state.dates?.length) return false;
+  const allDates = [...state.dates].sort((a, b) => a.localeCompare(b));
+  return dates.length === allDates.length
+    && dates[0] === allDates[0]
+    && dates[dates.length - 1] === allDates[allDates.length - 1];
+}
+
 async function loadPeriodDates(dates) {
   const dateSet = new Set(dates);
   const months = monthsForDates(dates);
@@ -945,6 +953,7 @@ function renderTrendChart(rows, estimateRows, dates, label) {
   }
 
   const granularity = els.granularitySelect.value || "daily";
+  const showEventMarkers = !isAllTimeView(dates);
   const buckets = aggregateTrendRows(rows, dates, granularity);
   const estimateBuckets = aggregateTrendRows(estimateRows, dates, granularity, "predictedSales");
   const values = buckets.map((bucket) => bucket.sales);
@@ -1026,7 +1035,7 @@ function renderTrendChart(rows, estimateRows, dates, label) {
         `;
       }).join("")}
       ${points.map((point) => {
-        const hasEvent = eventsForDates(point.dates).length > 0;
+        const hasEvent = showEventMarkers && eventsForDates(point.dates).length > 0;
         const tooltip = escapeHtml(pointTooltip(point));
         return `
           <circle
