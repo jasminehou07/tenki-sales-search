@@ -78,22 +78,13 @@ main {
 .date-filter-grid {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: 72px repeat(3, minmax(130px, 1fr));
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
   gap: 12px;
   align-items: end;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfd;
-}
-
-.date-row-label {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .range-filter {
@@ -389,7 +380,7 @@ thead th {
   }
 
   .date-filter-grid {
-    grid-template-columns: 60px repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .compare-heading {
@@ -427,7 +418,4 @@ thead th {
     grid-template-columns: 1fr;
   }
 
-  .date-row-label {
-    min-height: auto;
-  }
 }
