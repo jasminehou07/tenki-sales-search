@@ -95,14 +95,6 @@ main {
   display: grid;
 }
 
-.range-prefix {
-  display: none;
-}
-
-.range-mode .range-prefix {
-  display: inline;
-}
-
 label {
   display: grid;
   gap: 6px;
