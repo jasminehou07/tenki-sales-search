@@ -48,6 +48,7 @@ const els = {
   resetButton: document.getElementById("resetButton"),
   salesMetric: document.getElementById("salesMetric"),
   unitsMetric: document.getElementById("unitsMetric"),
+  pageViewsMetric: document.getElementById("pageViewsMetric"),
   trendChart: document.getElementById("trendChart"),
   trendSubtitle: document.getElementById("trendSubtitle"),
   shopCompareBody: document.getElementById("shopCompareBody"),
@@ -886,6 +887,7 @@ function filterEstimateRows(rows, dates, filters) {
 function renderEmptyState() {
   els.salesMetric.textContent = "-";
   els.unitsMetric.textContent = "-";
+  els.pageViewsMetric.textContent = "-";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
   const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
@@ -938,11 +940,13 @@ function renderSummary(rows) {
   const totals = rows.reduce((acc, row) => {
     acc.sales += row.sales;
     acc.units += row.units;
+    acc.pageViews += row.pageViews;
     return acc;
-  }, { sales: 0, units: 0 });
+  }, { sales: 0, units: 0, pageViews: 0 });
 
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
+  els.pageViewsMetric.textContent = whole.format(totals.pageViews);
 }
 
 function renderTrendChart(rows, estimateRows, dates, label) {
