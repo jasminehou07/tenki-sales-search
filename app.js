@@ -695,8 +695,8 @@ function eventsForDates(dates) {
 function pointTooltip(point) {
   const events = eventsForDates(point.dates);
   const promotionLine = events.length
-    ? `Promotion/event: ${events.join(", ")}`
-    : "Promotion/event: No promotion listed";
+    ? `Promotion: ${events.join(", ")}`
+    : "Promotion: No promotion listed";
   return `${point.label}\nSales: ${yen.format(point.value)}\n${promotionLine}`;
 }
 
