@@ -520,10 +520,12 @@ input:disabled {
   top: calc(100% + 8px);
   left: 0;
   display: grid;
-  width: min(230px, 78vw);
-  max-height: 240px;
-  overflow: auto;
-  padding: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 4px;
+  width: min(520px, calc(100vw - 48px));
+  max-height: none;
+  overflow: visible;
+  padding: 7px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #ffffff;
@@ -533,13 +535,15 @@ input:disabled {
 .shop-picker-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 7px;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 5px;
   border-radius: 6px;
   color: #2f3a47;
   cursor: pointer;
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 1.15;
 }
 
 .shop-picker-option:hover {
@@ -547,13 +551,25 @@ input:disabled {
 }
 
 .shop-picker-option input {
+  width: 11px;
+  height: 11px;
+  min-height: 0;
+  flex: 0 0 auto;
   margin: 0;
+  padding: 0;
 }
 
 .shop-picker-option i {
-  width: 18px;
-  height: 3px;
+  width: 13px;
+  height: 2px;
+  flex: 0 0 auto;
   border-radius: 999px;
+}
+
+@media (max-width: 620px) {
+  .shop-picker-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .shop-projection-key {
