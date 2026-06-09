@@ -74,6 +74,7 @@ const els = {
 
 const yen = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
 const whole = new Intl.NumberFormat("en-US");
+const shopProjectionColors = ["#0f766e", "#2563eb", "#db2777", "#f97316", "#7c3aed", "#16a34a", "#dc2626", "#0891b2"];
 
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -775,6 +776,27 @@ function aggregateTrendRows(rows, dates, granularity, valueKey = "sales") {
   return [...buckets.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
+function buildShopProjectionSeries(rows, dates, granularity) {
+  if (!rows.length) return [];
+  const topShops = new Map();
+  rows.forEach((row) => {
+    if (!row.shop) return;
+    topShops.set(row.shop, (topShops.get(row.shop) || 0) + row.predictedSales);
+  });
+  const shops = [...topShops.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([shop]) => shop);
+
+  return shops.map((shop) => {
+    const shopRows = rows.filter((row) => row.shop === shop);
+    return {
+      shop,
+      buckets: aggregateTrendRows(shopRows, dates, granularity, "predictedSales")
+        .filter((bucket) => bucket.rowCount > 0)
+    };
+  }).filter((series) => series.buckets.length);
+}
+
 function eventsForDates(dates) {
   if (!dates.length) return [];
   const first = dates[0];
@@ -901,13 +923,14 @@ async function update() {
     const baseRows = filterRows(allTimeData.summaryRows, { genre, shop });
     const baseItems = filterRows(allTimeData.itemRows, { genre, shop });
     const trendRows = filterRows(allTimeData.monthlyRows, { genre, shop });
-    const trendEstimates = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
+    const trendEstimates = filterEstimateRows(allTimeData.estimateRows, monthlyDates, { genre, shop });
+    const shopProjectionRows = shopProjectionRowsForChart(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const compareRows = compareDate && state.availableDates.has(compareDate)
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
       : [];
 
     renderSummary(baseRows);
-    renderTrendChart(trendRows, trendEstimates, monthlyDates, currentLabel, "monthly");
+    renderTrendChart(trendRows, trendEstimates, monthlyDates, currentLabel, "monthly", shopProjectionRows);
     renderShopComparison(baseRows);
     renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
     renderTopItems(baseItems);
@@ -928,13 +951,14 @@ async function update() {
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const trendRows = filterRows(chartRows, { genre, shop });
-  const trendEstimates = filterEstimateRows(shopEstimateRows, chartDates, { genre, shop });
+  const trendEstimates = filterEstimateRows(state.estimates, chartDates, { genre, shop });
+  const shopProjectionRows = shopProjectionRowsForChart(shopEstimateRows, chartDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
   renderSummary(baseRows);
-  renderTrendChart(trendRows, trendEstimates, chartDates, currentLabel);
+  renderTrendChart(trendRows, trendEstimates, chartDates, currentLabel, "", shopProjectionRows);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
@@ -961,6 +985,11 @@ function filterEstimateRows(rows, dates, filters) {
     if (filters.shop !== "all" && row.shop && row.shop !== filters.shop) return false;
     return true;
   });
+}
+
+function shopProjectionRowsForChart(rows, dates, filters) {
+  if (filters.genre === "all" && filters.shop === "all") return [];
+  return filterEstimateRows(rows, dates, filters);
 }
 
 function renderEmptyState() {
@@ -1070,7 +1099,7 @@ function renderSummary(rows) {
   els.pageViewsMetric.textContent = whole.format(totals.pageViews);
 }
 
-function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = "") {
+function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = "", shopProjectionRows = []) {
   if (!dates.length) {
     els.trendSubtitle.textContent = "Choose a day or period";
     els.trendChart.innerHTML = `<div class="empty">Choose dates to see sales trends.</div>`;
@@ -1081,11 +1110,13 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
   const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
   const buckets = aggregateTrendRows(rows, dates, granularity);
   const estimateBuckets = aggregateTrendRows(estimateRows, dates, granularity, "predictedSales");
+  const shopProjectionSeries = buildShopProjectionSeries(shopProjectionRows, dates, granularity);
   const values = buckets.map((bucket) => bucket.sales);
   const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
   const estimateBucketsWithData = estimateBuckets.filter((bucket) => bucket.rowCount > 0);
   const estimateValues = estimateBucketsWithData.map((bucket) => bucket.sales);
-  const max = Math.max(...values, ...estimateValues, 1);
+  const shopProjectionValues = shopProjectionSeries.flatMap((series) => series.buckets.map((bucket) => bucket.sales));
+  const max = Math.max(...values, ...estimateValues, ...shopProjectionValues, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -1119,6 +1150,29 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
       dates: bucket.dates
     };
   });
+  const shopProjectionPointSets = shopProjectionSeries.map((series, seriesIndex) => {
+    const color = shopProjectionColors[seriesIndex % shopProjectionColors.length];
+    const points = series.buckets.map((bucket) => {
+      const index = bucketIndexes.get(bucket.key) || 0;
+      const value = bucket.sales;
+      const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
+      const y = padTop + plotHeight - ((value / max) * plotHeight);
+      return {
+        x,
+        y,
+        value,
+        label: bucket.label,
+        key: bucket.key,
+        dates: bucket.dates
+      };
+    });
+    return {
+      shop: series.shop,
+      color,
+      points,
+      line: points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ")
+    };
+  });
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const estimateLine = estimatePoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
@@ -1142,10 +1196,12 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
       `).join("")}
       <polygon points="${area}" class="trend-area"></polygon>
       ${estimatePoints.length ? `<polyline points="${estimateLine}" class="trend-estimate-line"></polyline>` : ""}
+      ${shopProjectionPointSets.map((series) => `
+        <polyline points="${series.line}" class="trend-shop-projection-line" style="stroke: ${series.color}"></polyline>
+      `).join("")}
       <polyline points="${line}" class="trend-line"></polyline>
       ${estimatePoints.map((point) => {
-        const estimateName = els.shopSelect.value === "all" ? "TENKi shop projection" : "Selected shop projection";
-        const tooltip = escapeHtml(`${point.label}\n${estimateName}: ${yen.format(point.value)}\nTENKi-trained projection for the selected filters`);
+        const tooltip = escapeHtml(`${point.label}\nModel estimate benchmark: ${yen.format(point.value)}\nTENKi-trained model estimate, not reported competitor sales`);
         return `
           <circle
             cx="${point.x.toFixed(1)}"
@@ -1159,6 +1215,21 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
           </circle>
         `;
       }).join("")}
+      ${shopProjectionPointSets.flatMap((series) => series.points.map((point) => {
+        const tooltip = escapeHtml(`${point.label}\nShop ${series.shop} projection: ${yen.format(point.value)}\nTENKi shop projection for ${genreLabel(els.genreSelect.value)}`);
+        return `
+          <circle
+            cx="${point.x.toFixed(1)}"
+            cy="${point.y.toFixed(1)}"
+            r="7"
+            class="trend-hover-target shop-projection-target"
+            fill="transparent"
+            stroke="transparent"
+            tabindex="0"
+            data-tooltip="${tooltip}">
+          </circle>
+        `;
+      })).join("")}
       ${points.map((point) => {
         const hasEvent = showEventMarkers && eventsForDates(point.dates).length > 0;
         const tooltip = escapeHtml(pointTooltip(point));

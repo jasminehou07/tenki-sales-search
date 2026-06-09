@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260604-rank-table">
+  <link rel="stylesheet" href="styles.css?v=20260609-shop-projection-lines">
 </head>
 <body>
   <header class="app-header">
@@ -139,8 +139,9 @@
       </div>
       <div class="trend-legend" aria-label="Trend chart legend">
         <span><i class="legend-line actual-line"></i>Selected sales</span>
-        <span><i class="legend-line estimate-line"></i>TENKi shop projection</span>
-        <small>Projection is model-based and follows the selected shop, genre, and date range.</small>
+        <span><i class="legend-line estimate-line"></i>Model estimate benchmark</span>
+        <span><i class="legend-line shop-line"></i>TENKi shop projections</span>
+        <small>Shop projection lines appear when a genre or shop filter is selected.</small>
       </div>
       <div id="trendChart" class="trend-chart">
         <div class="empty">Loading...</div>
@@ -269,6 +270,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260609-full-shop-projection"></script>
+  <script src="app.js?v=20260609-shop-projection-lines"></script>
 </body>
 </html>

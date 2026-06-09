@@ -428,6 +428,10 @@ input:disabled {
   border-top-style: dashed;
 }
 
+.legend-line.shop-line {
+  border-top-color: #0f766e;
+}
+
 .trend-svg {
   display: block;
   width: 100%;
@@ -460,6 +464,14 @@ input:disabled {
   stroke-linejoin: round;
   stroke-width: 2.5;
   opacity: 0.82;
+}
+
+.trend-shop-projection-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+  opacity: 0.72;
 }
 
 .trend-point {
