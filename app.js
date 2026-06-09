@@ -1489,21 +1489,42 @@ function renderRankGapEstimates(rows, dates) {
     return { sales: 0, source: "missing" };
   };
 
+  const actualShopRanks = new Map();
+  filtered.forEach((row) => {
+    if (row.source !== "actual" || !row.shop) return;
+    const ranks = actualShopRanks.get(row.shop) || [];
+    ranks.push(row.rank);
+    actualShopRanks.set(row.shop, ranks);
+  });
+
+  const primaryShopsByRank = new Map();
+  actualShopRanks.forEach((ranks, shopId) => {
+    const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
+    const primaryRank = uniqueRanks[0];
+    const shops = primaryShopsByRank.get(primaryRank) || [];
+    shops.push({
+      shopId,
+      sales: uniqueRanks.reduce((total, rank) => total + estimateForRank(rank).sales, 0)
+    });
+    primaryShopsByRank.set(primaryRank, shops);
+  });
+  primaryShopsByRank.forEach((shops) => {
+    shops.sort((a, b) => b.sales - a.sales || a.shopId.localeCompare(b.shopId));
+  });
+
   const topRows = Array.from({ length: 20 }, (_, index) => {
     const rank = index + 1;
-    const rankRows = filtered.filter((row) => row.rank === rank);
-    const shops = [...new Set(rankRows
-      .filter((row) => row.source === "actual" && row.shop)
-      .map((row) => row.shop))]
-      .sort((a, b) => a.localeCompare(b));
+    const shops = primaryShopsByRank.get(rank) || [];
     const estimate = estimateForRank(rank);
 
     return {
       rank,
       label: shops.length
-        ? shops.map((shopId) => `Shop ${shopId}`).join(", ")
+        ? shops.map((shop) => `Shop ${shop.shopId}`).join(", ")
         : `Estimated shop (rank #${whole.format(rank)})`,
-      sales: estimate.sales,
+      sales: shops.length
+        ? shops.reduce((total, shop) => total + shop.sales, 0)
+        : estimate.sales,
       source: shops.length ? "actual" : "estimated"
     };
   });
