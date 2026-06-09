@@ -1249,7 +1249,7 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
         <polyline points="${row.line}" class="trend-shop-projection-line" style="stroke: ${row.color}"></polyline>
       `).join("")}
       ${pointSets.flatMap((row) => row.points.map((point) => {
-        const tooltip = escapeHtml(`${point.label}\nShop ${row.shop} projection: ${yen.format(point.value)}\nTENKi shop projection for ${genreLabel(els.genreSelect.value)}`);
+        const tooltip = escapeHtml(`${point.label}\nShop ${row.shop}\n${yen.format(point.value)}`);
         return `
           <circle
             cx="${point.x.toFixed(1)}"
@@ -1267,6 +1267,14 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
         <text x="${(buckets.length === 1 ? width / 2 : padX + (plotWidth * bucketIndexes.get(point.key)) / (buckets.length - 1)).toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.label}</text>
       `).join("")}
     </svg>
+    <div class="shop-projection-legend">
+      ${pointSets.map((row) => `
+        <span class="shop-projection-key">
+          <i style="background: ${row.color}"></i>
+          Shop ${row.shop}
+        </span>
+      `).join("")}
+    </div>
     <div class="trend-tooltip" hidden></div>
   `;
   attachTrendTooltipHandlers(els.shopProjectionChart);

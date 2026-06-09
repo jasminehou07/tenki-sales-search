@@ -464,6 +464,29 @@ input:disabled {
   opacity: 0.72;
 }
 
+.shop-projection-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 2px 4px 0;
+}
+
+.shop-projection-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #3a434d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shop-projection-key i {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+}
+
 .trend-point {
   fill: #f7fffd;
   stroke: #4f9f97;
