@@ -26,7 +26,8 @@ const state = {
   byShop: new Map(),
   byGenre: new Map(),
   shopProjectionSelected: new Set(),
-  shopProjectionSelectionKey: ""
+  shopProjectionSelectionKey: "",
+  shopPickerOpensAbove: false
 };
 
 const els = {
@@ -811,7 +812,7 @@ function syncShopProjectionSelection(shops) {
   state.shopProjectionSelected = new Set(selected);
 }
 
-function sizeShopPickerMenu(picker) {
+function sizeShopPickerMenu(picker, forceDirection = false) {
   const menu = picker?.querySelector(".shop-picker-menu");
   const summary = picker?.querySelector("summary");
   if (!menu || !summary) return;
@@ -822,10 +823,13 @@ function sizeShopPickerMenu(picker) {
   const summaryRect = summary.getBoundingClientRect();
   const spaceBelow = window.innerHeight - summaryRect.bottom - margin;
   const spaceAbove = summaryRect.top - margin;
-  const shouldOpenAbove = spaceBelow < minHeight && spaceAbove > spaceBelow;
-  const availableSpace = shouldOpenAbove ? spaceAbove : spaceBelow;
+  const shouldOpenAbove = forceDirection
+    ? state.shopPickerOpensAbove
+    : spaceBelow < minHeight && spaceAbove > spaceBelow;
+  const availableSpace = (shouldOpenAbove ? spaceAbove : spaceBelow) - 8;
   const cappedHeight = Math.max(minHeight, Math.min(maxHeight, availableSpace));
 
+  state.shopPickerOpensAbove = shouldOpenAbove;
   picker.classList.toggle("is-above", shouldOpenAbove);
   menu.style.setProperty("--shop-picker-max-height", `${Math.round(cappedHeight)}px`);
 }
@@ -843,7 +847,7 @@ function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) 
 
   const allSelected = pointSets.every((row) => state.shopProjectionSelected.has(row.shop));
   els.shopProjectionControls.innerHTML = `
-    <details class="shop-picker" ${keepOpen ? "open" : ""}>
+    <details class="shop-picker${keepOpen && state.shopPickerOpensAbove ? " is-above" : ""}" ${keepOpen ? "open" : ""}>
       <summary>${allSelected ? "All shops" : `${state.shopProjectionSelected.size} shops selected`}</summary>
       <div class="shop-picker-menu">
         <label class="shop-picker-option">
@@ -866,7 +870,12 @@ function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) 
   picker?.addEventListener("toggle", () => {
     if (picker.open) requestAnimationFrame(() => sizeShopPickerMenu(picker));
   });
-  if (keepOpen) requestAnimationFrame(() => sizeShopPickerMenu(picker));
+  if (keepOpen) {
+    requestAnimationFrame(() => {
+      sizeShopPickerMenu(picker, true);
+      requestAnimationFrame(() => sizeShopPickerMenu(picker, true));
+    });
+  }
 
   const allToggle = els.shopProjectionControls.querySelector("[data-shop-picker-all]");
   allToggle?.addEventListener("change", () => {
