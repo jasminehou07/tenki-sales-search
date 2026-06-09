@@ -1,6 +1,5 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
-const ESTIMATES_URL = "data/rakuten_estimates.csv";
 const RANK_CURVES_URL = "data/rank_curves.csv?v=20260609-holdout-rank-curves";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
@@ -16,7 +15,6 @@ const state = {
   rows: [],
   filtered: [],
   events: [],
-  estimates: [],
   rankCurves: new Map(),
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
@@ -926,14 +924,13 @@ async function update() {
     const baseRows = filterRows(allTimeData.summaryRows, { genre, shop });
     const baseItems = filterRows(allTimeData.itemRows, { genre, shop });
     const trendRows = filterRows(allTimeData.monthlyRows, { genre, shop });
-    const trendEstimates = filterEstimateRows(allTimeData.estimateRows, monthlyDates, { genre, shop });
     const shopProjectionRows = shopProjectionRowsForChart(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const compareRows = compareDate && state.availableDates.has(compareDate)
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
       : [];
 
     renderSummary(baseRows);
-    renderTrendChart(trendRows, trendEstimates, monthlyDates, currentLabel, "monthly");
+    renderTrendChart(trendRows, monthlyDates, currentLabel, "monthly");
     renderShopProjectionChart(shopProjectionRows, monthlyDates, currentLabel, "monthly");
     renderShopComparison(baseRows);
     renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
@@ -955,14 +952,13 @@ async function update() {
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const trendRows = filterRows(chartRows, { genre, shop });
-  const trendEstimates = filterEstimateRows(state.estimates, chartDates, { genre, shop });
   const shopProjectionRows = shopProjectionRowsForChart(shopEstimateRows, chartDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
   renderSummary(baseRows);
-  renderTrendChart(trendRows, trendEstimates, chartDates, currentLabel);
+  renderTrendChart(trendRows, chartDates, currentLabel);
   renderShopProjectionChart(shopProjectionRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
@@ -1071,14 +1067,12 @@ async function loadAllTimeData() {
     summaryText,
     monthlyText,
     itemsText,
-    estimatesText,
     shopEstimatesText,
     rankRowsText
   ] = await Promise.all([
     fetch(`${ALL_TIME_URL}/summary.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/items.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
-    fetch(`${ALL_TIME_URL}/estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/shop_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/ranked_shops_latest.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text())
   ]);
@@ -1086,7 +1080,6 @@ async function loadAllTimeData() {
     summaryRows: parseCsv(summaryText).map(allTimeSummaryFromCsv),
     monthlyRows: parseCsv(monthlyText).map(allTimeMonthlyFromCsv),
     itemRows: parseCsv(itemsText).map(allTimeItemFromCsv),
-    estimateRows: parseCsv(estimatesText).map(estimateFromCsv),
     shopEstimateRows: parseCsv(shopEstimatesText).map(estimateFromCsv),
     rankRows: parseCsv(rankRowsText).map(rankGapFromCsv)
   };
@@ -1106,7 +1099,7 @@ function renderSummary(rows) {
   els.pageViewsMetric.textContent = whole.format(totals.pageViews);
 }
 
-function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = "") {
+function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   if (!dates.length) {
     els.trendSubtitle.textContent = "Choose a day or period";
     els.trendChart.innerHTML = `<div class="empty">Choose dates to see sales trends.</div>`;
@@ -1116,12 +1109,8 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
   const granularity = forcedGranularity || els.granularitySelect.value || "daily";
   const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
   const buckets = aggregateTrendRows(rows, dates, granularity);
-  const estimateBuckets = aggregateTrendRows(estimateRows, dates, granularity, "predictedSales");
   const values = buckets.map((bucket) => bucket.sales);
-  const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
-  const estimateBucketsWithData = estimateBuckets.filter((bucket) => bucket.rowCount > 0);
-  const estimateValues = estimateBucketsWithData.map((bucket) => bucket.sales);
-  const max = Math.max(...values, ...estimateValues, 1);
+  const max = Math.max(...values, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -1141,22 +1130,7 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
       dates: buckets[index].dates
     };
   });
-  const estimatePoints = estimateBucketsWithData.map((bucket) => {
-    const index = bucketIndexes.get(bucket.key) || 0;
-    const value = bucket.sales;
-    const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
-    const y = padTop + plotHeight - ((value / max) * plotHeight);
-    return {
-      x,
-      y,
-      value,
-      label: bucket.label,
-      key: bucket.key,
-      dates: bucket.dates
-    };
-  });
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
-  const estimateLine = estimatePoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: max * ratio,
@@ -1177,23 +1151,7 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
         <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
       `).join("")}
       <polygon points="${area}" class="trend-area"></polygon>
-      ${estimatePoints.length ? `<polyline points="${estimateLine}" class="trend-estimate-line"></polyline>` : ""}
       <polyline points="${line}" class="trend-line"></polyline>
-      ${estimatePoints.map((point) => {
-        const tooltip = escapeHtml(`${point.label}\nModel estimate benchmark: ${yen.format(point.value)}\nTENKi-trained model estimate, not reported competitor sales`);
-        return `
-          <circle
-            cx="${point.x.toFixed(1)}"
-            cy="${point.y.toFixed(1)}"
-            r="8"
-            class="trend-hover-target estimate-target"
-            fill="transparent"
-            stroke="transparent"
-            tabindex="0"
-            data-tooltip="${tooltip}">
-          </circle>
-        `;
-      }).join("")}
       ${points.map((point) => {
         const hasEvent = showEventMarkers && eventsForDates(point.dates).length > 0;
         const tooltip = escapeHtml(pointTooltip(point));
@@ -1584,10 +1542,9 @@ function renderEvents(date) {
 
 async function init() {
   try {
-    const [optionsText, eventsText, estimatesText, rankCurvesText] = await Promise.all([
+    const [optionsText, eventsText, rankCurvesText] = await Promise.all([
       fetch(OPTIONS_URL).then((response) => response.text()),
       fetch(EVENTS_URL).then((response) => response.text()),
-      fetch(ESTIMATES_URL).then((response) => response.text()),
       fetch(RANK_CURVES_URL).then((response) => response.text())
     ]);
 
@@ -1602,7 +1559,6 @@ async function init() {
     buildDateControls(dateRows);
 
     state.events = parseCsv(eventsText);
-    state.estimates = parseCsv(estimatesText).map(estimateFromCsv);
     state.rankCurves = parseCsv(rankCurvesText).map(rankCurveFromCsv).reduce((map, row) => {
       if (!map.has(row.genre)) map.set(row.genre, new Map());
       map.get(row.genre).set(row.rank, row.estimatedSales);
