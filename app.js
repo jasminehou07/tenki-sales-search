@@ -1489,6 +1489,34 @@ function renderRankGapEstimates(rows, dates) {
     return { sales: 0, source: "missing" };
   };
 
+  const estimateMissingRank = (rank) => {
+    const rankRows = filtered.filter((row) => row.rank === rank);
+    const actualAnchor = rankRows.find((row) => row.source === "actual" && row.salesKnown);
+    if (actualAnchor) return { sales: actualAnchor.sales, source: "estimated" };
+
+    const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
+    if (sameDayEstimate) return { sales: sameDayEstimate.sales, source: "estimated" };
+
+    const curveSales = curveByRank.get(rank);
+    if (Number.isFinite(curveSales)) return { sales: curveSales, source: "estimated" };
+
+    const fallbackSales = fallbackByRank.get(rank);
+    if (Number.isFinite(fallbackSales)) return { sales: fallbackSales, source: "estimated" };
+
+    return { sales: 0, source: "missing" };
+  };
+
+  const estimateForShopRank = (shopId, rank) => {
+    const actualShopSales = filtered.find((row) =>
+      row.rank === rank &&
+      row.shop === shopId &&
+      row.source === "actual" &&
+      row.salesKnown
+    );
+    if (actualShopSales) return { sales: actualShopSales.sales, source: "actual" };
+    return estimateMissingRank(rank);
+  };
+
   const actualShopRanks = new Map();
   filtered.forEach((row) => {
     if (row.source !== "actual" || !row.shop) return;
@@ -1502,7 +1530,7 @@ function renderRankGapEstimates(rows, dates) {
     const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
     const primaryRank = uniqueRanks[0];
     const shops = primaryShopsByRank.get(primaryRank) || [];
-    const rankEstimate = estimateForRank(primaryRank);
+    const rankEstimate = estimateForShopRank(shopId, primaryRank);
     shops.push({
       shopId,
       sales: rankEstimate.sales,
@@ -1517,7 +1545,7 @@ function renderRankGapEstimates(rows, dates) {
   const topRows = Array.from({ length: 20 }, (_, index) => {
     const rank = index + 1;
     const shops = primaryShopsByRank.get(rank) || [];
-    const estimate = estimateForRank(rank);
+    const estimate = estimateMissingRank(rank);
 
     return {
       rank,
