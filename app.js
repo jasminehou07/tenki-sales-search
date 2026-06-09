@@ -2,11 +2,11 @@ const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
 const ESTIMATES_URL = "data/rakuten_estimates.csv";
 const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
-const RANK_CURVES_URL = "data/rank_curves.csv?v=20260609-rank-curves";
+const RANK_CURVES_URL = "data/rank_curves.csv?v=20260609-holdout-rank-curves";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
-const RANK_DATA_VERSION = "20260609-rank-curves";
+const RANK_DATA_VERSION = "20260609-holdout-rank-curves";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {

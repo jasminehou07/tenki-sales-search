@@ -1,0 +1,2 @@
+holdout_rate,train_rows,test_rows,wmape,median_ape,within_25_percent
+0.05,92650,5018,0.491401,0.375618,0.353926
