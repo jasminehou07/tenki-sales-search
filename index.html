@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260609-rank-dedupe-shops">
+  <link rel="stylesheet" href="styles.css?v=20260609-metrics-above-graphs">
 </head>
 <body>
   <header class="app-header">
@@ -130,6 +130,21 @@
       <button id="resetButton" type="button" disabled>Reset</button>
     </section>
 
+    <section class="metrics" aria-label="Search result totals">
+      <article>
+        <span>Total sales</span>
+        <strong id="salesMetric">-</strong>
+      </article>
+      <article>
+        <span>Units sold</span>
+        <strong id="unitsMetric">-</strong>
+      </article>
+      <article>
+        <span>Page views</span>
+        <strong id="pageViewsMetric">-</strong>
+      </article>
+    </section>
+
     <section class="panel trend-panel" aria-label="Sales trend">
       <div class="panel-heading">
         <div>
@@ -157,21 +172,6 @@
       <div id="shopProjectionChart" class="trend-chart">
         <div class="empty">Choose one genre or shop to see TENKi shop projections.</div>
       </div>
-    </section>
-
-    <section class="metrics" aria-label="Search result totals">
-      <article>
-        <span>Total sales</span>
-        <strong id="salesMetric">-</strong>
-      </article>
-      <article>
-        <span>Units sold</span>
-        <strong id="unitsMetric">-</strong>
-      </article>
-      <article>
-        <span>Page views</span>
-        <strong id="pageViewsMetric">-</strong>
-      </article>
     </section>
 
     <section class="comparison-grid" aria-label="Sales comparisons">
@@ -281,6 +281,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260609-rank-dedupe-shops"></script>
+  <script src="app.js?v=20260609-metrics-above-graphs"></script>
 </body>
 </html>
