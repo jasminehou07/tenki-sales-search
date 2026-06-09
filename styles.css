@@ -489,6 +489,11 @@ input:disabled {
   position: relative;
 }
 
+.shop-picker.is-above .shop-picker-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
 .shop-picker summary {
   display: inline-flex;
   align-items: center;
@@ -523,7 +528,7 @@ input:disabled {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px 4px;
   width: min(520px, calc(100vw - 48px));
-  max-height: min(360px, calc(100vh - 220px));
+  max-height: var(--shop-picker-max-height, min(360px, 58vh));
   overflow-y: auto;
   overflow-x: hidden;
   padding: 7px;

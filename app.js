@@ -811,6 +811,30 @@ function syncShopProjectionSelection(shops) {
   state.shopProjectionSelected = new Set(selected);
 }
 
+function sizeShopPickerMenu(picker) {
+  const menu = picker?.querySelector(".shop-picker-menu");
+  const summary = picker?.querySelector("summary");
+  if (!menu || !summary) return;
+
+  const margin = 16;
+  const minHeight = 170;
+  const maxHeight = 360;
+  const summaryRect = summary.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - summaryRect.bottom - margin;
+  const spaceAbove = summaryRect.top - margin;
+  const shouldOpenAbove = spaceBelow < minHeight && spaceAbove > spaceBelow;
+  const availableSpace = shouldOpenAbove ? spaceAbove : spaceBelow;
+  const cappedHeight = Math.max(minHeight, Math.min(maxHeight, availableSpace));
+
+  picker.classList.toggle("is-above", shouldOpenAbove);
+  menu.style.setProperty("--shop-picker-max-height", `${Math.round(cappedHeight)}px`);
+}
+
+function sizeOpenShopPickerMenu() {
+  const picker = els.shopProjectionControls.querySelector(".shop-picker[open]");
+  if (picker) sizeShopPickerMenu(picker);
+}
+
 function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) {
   if (!pointSets.length) {
     els.shopProjectionControls.innerHTML = "";
@@ -838,6 +862,12 @@ function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) 
     <small>Model-predicted values, not actual sales.</small>
   `;
 
+  const picker = els.shopProjectionControls.querySelector(".shop-picker");
+  picker?.addEventListener("toggle", () => {
+    if (picker.open) requestAnimationFrame(() => sizeShopPickerMenu(picker));
+  });
+  if (keepOpen) requestAnimationFrame(() => sizeShopPickerMenu(picker));
+
   const allToggle = els.shopProjectionControls.querySelector("[data-shop-picker-all]");
   allToggle?.addEventListener("change", () => {
     state.shopProjectionSelected = allToggle.checked
@@ -857,6 +887,8 @@ function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) 
     });
   });
 }
+
+window.addEventListener("resize", sizeOpenShopPickerMenu);
 
 function eventsForDates(dates) {
   if (!dates.length) return [];
