@@ -1504,7 +1504,7 @@ function renderRankGapEstimates(rows, dates) {
     const shops = primaryShopsByRank.get(primaryRank) || [];
     shops.push({
       shopId,
-      sales: uniqueRanks.reduce((total, rank) => total + estimateForRank(rank).sales, 0)
+      sales: estimateForRank(primaryRank).sales
     });
     primaryShopsByRank.set(primaryRank, shops);
   });
@@ -1529,7 +1529,13 @@ function renderRankGapEstimates(rows, dates) {
     };
   });
 
-  els.rankGapCount.textContent = `Top shop totals for ${rankDate}`;
+  for (let index = 1; index < topRows.length; index += 1) {
+    if (topRows[index].sales > topRows[index - 1].sales) {
+      topRows[index].sales = topRows[index - 1].sales;
+    }
+  }
+
+  els.rankGapCount.textContent = `Rank estimates for ${rankDate}`;
   els.rankGapBody.innerHTML = topRows.map((row, index) => {
     const source = row.source === "actual"
       ? `<span class="source-pill actual">TENKi actual</span>`
