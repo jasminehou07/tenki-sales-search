@@ -1154,63 +1154,55 @@ function renderRankGapEstimates(rows, dates) {
   });
   const curveByRank = state.rankCurves.get(genre) || new Map();
 
-  const byRank = new Map();
+  const estimateForRank = (rank) => {
+    const rankRows = filtered.filter((row) => row.rank === rank);
+    const actualWithSales = rankRows.find((row) => row.source === "actual" && row.salesKnown);
+    if (actualWithSales) return { sales: actualWithSales.sales, source: "actual" };
+
+    const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
+    if (sameDayEstimate) return { sales: sameDayEstimate.sales, source: "estimated" };
+
+    const curveSales = curveByRank.get(rank);
+    if (Number.isFinite(curveSales)) return { sales: curveSales, source: "estimated" };
+
+    const fallbackSales = fallbackByRank.get(rank);
+    if (Number.isFinite(fallbackSales)) return { sales: fallbackSales, source: "estimated" };
+
+    return { sales: 0, source: "missing" };
+  };
+
+  const byShop = new Map();
   filtered.forEach((row) => {
-    const current = byRank.get(row.rank) || {
-      rank: row.rank,
-      shops: new Set(),
+    if (row.source !== "actual" || !row.shop) return;
+    const estimate = estimateForRank(row.rank);
+    const current = byShop.get(row.shop) || {
+      shop: row.shop,
       sales: 0,
-      salesKnown: false,
-      estimatedSales: 0,
-      estimateKnown: false,
-      source: "missing"
+      actualRows: 0,
+      estimatedRows: 0,
+      ranks: new Set()
     };
-    if (row.source === "actual") {
-      current.source = "actual";
-      current.shops.add(row.shop);
-      if (row.salesKnown) {
-        current.sales += row.sales;
-        current.salesKnown = true;
-      }
-    } else if (!current.salesKnown) {
-      current.estimatedSales = row.sales || 0;
-      current.estimateKnown = row.salesKnown;
-      if (current.source !== "actual") current.source = "estimated";
-    } else if (current.source !== "actual") {
-      current.source = "estimated";
-      current.estimatedSales = row.sales || 0;
-      current.estimateKnown = row.salesKnown;
-    }
-    byRank.set(row.rank, current);
+    current.sales += estimate.sales;
+    current.ranks.add(row.rank);
+    if (estimate.source === "actual") current.actualRows += 1;
+    if (estimate.source === "estimated") current.estimatedRows += 1;
+    byShop.set(row.shop, current);
   });
 
-  els.rankGapCount.textContent = `Ranks 1-20 for ${rankDate}`;
-  els.rankGapBody.innerHTML = Array.from({ length: 20 }, (_, index) => {
-    const rank = index + 1;
-    const row = byRank.get(rank) || { rank, shops: new Set(), sales: 0, salesKnown: false, estimatedSales: 0, estimateKnown: false, source: "missing" };
-    const isActual = row.source === "actual";
-    const fallbackSales = fallbackByRank.get(rank);
-    const curveSales = curveByRank.get(rank);
-    const hasCurveSales = !row.salesKnown && !row.estimateKnown && Number.isFinite(curveSales);
-    const hasFallbackSales = !row.salesKnown && !row.estimateKnown && !hasCurveSales && Number.isFinite(fallbackSales);
-    const hasEstimatedSales = (row.estimateKnown || hasCurveSales || hasFallbackSales) && !row.salesKnown;
-    const isEstimated = row.source === "estimated" || hasEstimatedSales;
-    const shopText = isActual ? [...row.shops].map((shop) => `Shop ${shop}`).join(", ") : "Unknown shop";
-    const displaySales = row.salesKnown ? row.sales : row.estimateKnown ? row.estimatedSales : hasCurveSales ? curveSales : hasFallbackSales ? fallbackSales : null;
-    const source = isActual
-      ? row.salesKnown
-        ? `<span class="source-pill actual">TENKi actual</span>`
-        : row.estimateKnown || hasCurveSales || hasFallbackSales
-          ? `<span class="source-pill estimated">Estimated</span>`
-          : `<span class="source-pill actual">TENKi rank</span>`
-      : isEstimated
-        ? `<span class="source-pill estimated">Estimated</span>`
-        : `<span class="source-pill missing">No estimate</span>`;
+  const topShops = [...byShop.values()]
+    .sort((a, b) => b.sales - a.sales || a.shop.localeCompare(b.shop))
+    .slice(0, 20);
+
+  els.rankGapCount.textContent = `Top shops for ${rankDate}`;
+  els.rankGapBody.innerHTML = topShops.map((row, index) => {
+    const source = row.actualRows > 0 && row.estimatedRows === 0
+      ? `<span class="source-pill actual">TENKi actual</span>`
+      : `<span class="source-pill estimated">Estimated</span>`;
     return `
-      <tr class="${isActual ? "actual-rank-row" : isEstimated ? "estimated-rank-row" : "missing-rank-row"}">
-        <td>#${whole.format(rank)}</td>
-        <td>${isActual || isEstimated ? shopText : "-"}</td>
-        <td>${displaySales === null ? "-" : yen.format(displaySales)}</td>
+      <tr class="${row.estimatedRows > 0 ? "estimated-rank-row" : "actual-rank-row"}">
+        <td>#${whole.format(index + 1)}</td>
+        <td>Shop ${row.shop}</td>
+        <td>${yen.format(row.sales)}</td>
         <td>${source}</td>
       </tr>
     `;
