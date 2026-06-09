@@ -6,7 +6,9 @@ const RANK_CURVES_URL = "data/rank_curves.csv?v=20260609-holdout-rank-curves";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
+const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260609-holdout-rank-curves";
+const ALL_TIME_DATA_VERSION = "20260609-all-time-compact";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -19,6 +21,7 @@ const state = {
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
   loadedRankGapMonths: new Map(),
+  allTimeData: null,
   genreLabels: new Map(),
   byDate: new Map(),
   byShop: new Map(),
@@ -534,6 +537,39 @@ function rankCurveFromCsv(row) {
   };
 }
 
+function allTimeSummaryFromCsv(row) {
+  return {
+    date: "all-time",
+    shop: row.shop,
+    genre: row.genre,
+    sales: Number(row.sales) || 0,
+    units: Number(row.units) || 0,
+    pageViews: Number(row.page_views) || 0
+  };
+}
+
+function allTimeMonthlyFromCsv(row) {
+  return {
+    date: row.date,
+    shop: row.shop,
+    genre: row.genre,
+    sales: Number(row.sales) || 0,
+    units: Number(row.units) || 0,
+    pageViews: Number(row.page_views) || 0
+  };
+}
+
+function allTimeItemFromCsv(row) {
+  return {
+    date: "all-time",
+    shop: row.shop,
+    genre: row.genre,
+    item: row.item,
+    sales: Number(row.sales) || 0,
+    units: Number(row.units) || 0
+  };
+}
+
 function genreLabel(id) {
   return state.genreLabels.get(String(id)) || `Genre ${id}`;
 }
@@ -850,6 +886,30 @@ async function update() {
     return;
   }
 
+  if (isAllTimeView(periodDates)) {
+    const allTimeData = await loadAllTimeData();
+    const monthlyDates = [...new Set(allTimeData.monthlyRows.map((row) => row.date))]
+      .sort((a, b) => a.localeCompare(b));
+    const baseRows = filterRows(allTimeData.summaryRows, { genre, shop });
+    const baseItems = filterRows(allTimeData.itemRows, { genre, shop });
+    const trendRows = filterRows(allTimeData.monthlyRows, { genre, shop });
+    const estimateSource = shop === "all" ? allTimeData.estimateRows : allTimeData.shopEstimateRows;
+    const trendEstimates = filterEstimateRows(estimateSource, monthlyDates, { genre, shop });
+    const compareRows = compareDate && state.availableDates.has(compareDate)
+      ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
+      : [];
+
+    renderSummary(baseRows);
+    renderTrendChart(trendRows, trendEstimates, monthlyDates, currentLabel, "monthly");
+    renderShopComparison(baseRows);
+    renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
+    renderTopItems(baseItems);
+    renderRankGapEstimates(allTimeData.rankRows, periodDates);
+    renderEvents(periodDates);
+    els.loadStatus.textContent = `Compact all-time view loaded for ${currentLabel}`;
+    return;
+  }
+
   const chartDates = trendDatesForPeriod(periodDates);
   const [dateRows, itemRows, chartRows, rankGapRows] = await Promise.all([
     loadPeriodDates(periodDates),
@@ -948,6 +1008,35 @@ async function loadRankGapMonth(month) {
   return rows;
 }
 
+async function loadAllTimeData() {
+  if (state.allTimeData) return state.allTimeData;
+  els.loadStatus.textContent = "Loading compact all-time data...";
+  const [
+    summaryText,
+    monthlyText,
+    itemsText,
+    estimatesText,
+    shopEstimatesText,
+    rankRowsText
+  ] = await Promise.all([
+    fetch(`${ALL_TIME_URL}/summary.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/items.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/shop_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/ranked_shops_latest.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text())
+  ]);
+  state.allTimeData = {
+    summaryRows: parseCsv(summaryText).map(allTimeSummaryFromCsv),
+    monthlyRows: parseCsv(monthlyText).map(allTimeMonthlyFromCsv),
+    itemRows: parseCsv(itemsText).map(allTimeItemFromCsv),
+    estimateRows: parseCsv(estimatesText).map(estimateFromCsv),
+    shopEstimateRows: parseCsv(shopEstimatesText).map(estimateFromCsv),
+    rankRows: parseCsv(rankRowsText).map(rankGapFromCsv)
+  };
+  return state.allTimeData;
+}
+
 function renderSummary(rows) {
   const totals = rows.reduce((acc, row) => {
     acc.sales += row.sales;
@@ -961,15 +1050,15 @@ function renderSummary(rows) {
   els.pageViewsMetric.textContent = whole.format(totals.pageViews);
 }
 
-function renderTrendChart(rows, estimateRows, dates, label) {
+function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = "") {
   if (!dates.length) {
     els.trendSubtitle.textContent = "Choose a day or period";
     els.trendChart.innerHTML = `<div class="empty">Choose dates to see sales trends.</div>`;
     return;
   }
 
-  const granularity = els.granularitySelect.value || "daily";
-  const showEventMarkers = !isAllTimeView(dates);
+  const granularity = forcedGranularity || els.granularitySelect.value || "daily";
+  const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
   const buckets = aggregateTrendRows(rows, dates, granularity);
   const estimateBuckets = aggregateTrendRows(estimateRows, dates, granularity, "predictedSales");
   const values = buckets.map((bucket) => bucket.sales);
