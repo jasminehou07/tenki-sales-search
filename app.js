@@ -1171,37 +1171,51 @@ function renderRankGapEstimates(rows, dates) {
     return { sales: 0, source: "missing" };
   };
 
+  const displayRows = [];
   const byShop = new Map();
   filtered.forEach((row) => {
     if (row.source !== "actual" || !row.shop) return;
     const estimate = estimateForRank(row.rank);
-    const current = byShop.get(row.shop) || {
-      shop: row.shop,
-      sales: 0,
-      actualRows: 0,
-      estimatedRows: 0,
-      ranks: new Set()
-    };
-    current.sales += estimate.sales;
-    current.ranks.add(row.rank);
-    if (estimate.source === "actual") current.actualRows += 1;
-    if (estimate.source === "estimated") current.estimatedRows += 1;
-    byShop.set(row.shop, current);
+    if (estimate.source === "actual") {
+      const current = byShop.get(row.shop) || {
+        shop: row.shop,
+        sales: 0,
+        ranks: new Set()
+      };
+      current.sales += estimate.sales;
+      current.ranks.add(row.rank);
+      byShop.set(row.shop, current);
+      return;
+    }
+
+    displayRows.push({
+      label: `Estimated shop (rank #${whole.format(row.rank)})`,
+      sales: estimate.sales,
+      source: "estimated"
+    });
   });
 
-  const topShops = [...byShop.values()]
-    .sort((a, b) => b.sales - a.sales || a.shop.localeCompare(b.shop))
+  byShop.forEach((row) => {
+    displayRows.push({
+      label: `Shop ${row.shop}`,
+      sales: row.sales,
+      source: "actual"
+    });
+  });
+
+  const topRows = displayRows
+    .sort((a, b) => b.sales - a.sales || a.label.localeCompare(b.label))
     .slice(0, 20);
 
-  els.rankGapCount.textContent = `Top shops for ${rankDate}`;
-  els.rankGapBody.innerHTML = topShops.map((row, index) => {
-    const source = row.actualRows > 0 && row.estimatedRows === 0
+  els.rankGapCount.textContent = `Top shop totals for ${rankDate}`;
+  els.rankGapBody.innerHTML = topRows.map((row, index) => {
+    const source = row.source === "actual"
       ? `<span class="source-pill actual">TENKi actual</span>`
       : `<span class="source-pill estimated">Estimated</span>`;
     return `
-      <tr class="${row.estimatedRows > 0 ? "estimated-rank-row" : "actual-rank-row"}">
+      <tr class="${row.source === "estimated" ? "estimated-rank-row" : "actual-rank-row"}">
         <td>#${whole.format(index + 1)}</td>
-        <td>Shop ${row.shop}</td>
+        <td>${row.label}</td>
         <td>${yen.format(row.sales)}</td>
         <td>${source}</td>
       </tr>
