@@ -492,13 +492,13 @@ input:disabled {
 .shop-picker summary {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 13px;
+  min-height: 30px;
+  padding: 0 11px;
   border: 1px solid #cfd8e3;
   border-radius: 999px;
   color: #26323f;
   cursor: pointer;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 750;
   list-style: none;
 }
@@ -520,10 +520,10 @@ input:disabled {
   top: calc(100% + 8px);
   left: 0;
   display: grid;
-  width: min(260px, 78vw);
-  max-height: 260px;
+  width: min(230px, 78vw);
+  max-height: 240px;
   overflow: auto;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #ffffff;
@@ -534,11 +534,11 @@ input:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px;
+  padding: 6px 7px;
   border-radius: 6px;
   color: #2f3a47;
   cursor: pointer;
-  font-size: 0.86rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 

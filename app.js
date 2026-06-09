@@ -805,12 +805,13 @@ function syncShopProjectionSelection(shops) {
   if (state.shopProjectionSelectionKey !== key) {
     state.shopProjectionSelectionKey = key;
     state.shopProjectionSelected = new Set(shops);
+    return;
   }
   const selected = [...state.shopProjectionSelected].filter((shop) => shops.includes(shop));
-  state.shopProjectionSelected = selected.length ? new Set(selected) : new Set(shops);
+  state.shopProjectionSelected = new Set(selected);
 }
 
-function renderShopProjectionControls(pointSets, renderAgain) {
+function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) {
   if (!pointSets.length) {
     els.shopProjectionControls.innerHTML = "";
     return;
@@ -818,7 +819,7 @@ function renderShopProjectionControls(pointSets, renderAgain) {
 
   const allSelected = pointSets.every((row) => state.shopProjectionSelected.has(row.shop));
   els.shopProjectionControls.innerHTML = `
-    <details class="shop-picker">
+    <details class="shop-picker" ${keepOpen ? "open" : ""}>
       <summary>${allSelected ? "All shops" : `${state.shopProjectionSelected.size} shops selected`}</summary>
       <div class="shop-picker-menu">
         <label class="shop-picker-option">
@@ -842,7 +843,7 @@ function renderShopProjectionControls(pointSets, renderAgain) {
     state.shopProjectionSelected = allToggle.checked
       ? new Set(pointSets.map((row) => row.shop))
       : new Set();
-    renderAgain();
+    renderAgain(true);
   });
 
   els.shopProjectionControls.querySelectorAll("[data-shop]").forEach((input) => {
@@ -852,7 +853,7 @@ function renderShopProjectionControls(pointSets, renderAgain) {
         if (shopInput.checked) selected.add(shopInput.dataset.shop);
       });
       state.shopProjectionSelected = selected;
-      renderAgain();
+      renderAgain(true);
     });
   });
 }
@@ -1244,7 +1245,7 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   attachTrendTooltipHandlers();
 }
 
-function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
+function renderShopProjectionChart(rows, dates, label, forcedGranularity = "", keepOpen = false) {
   if (!dates.length) {
     els.shopProjectionSubtitle.textContent = "Choose a day or period";
     els.shopProjectionControls.innerHTML = "";
@@ -1264,9 +1265,6 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
   const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
   const series = buildShopProjectionSeries(rows, dates, granularity);
   syncShopProjectionSelection(series.map((row) => row.shop));
-  const visibleSeries = series.filter((row) => state.shopProjectionSelected.has(row.shop));
-  const values = visibleSeries.flatMap((row) => row.buckets.map((bucket) => bucket.sales));
-  const max = Math.max(...values, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -1276,6 +1274,12 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
   const plotHeight = height - padTop - padBottom;
   const allPointSets = series.map((row, seriesIndex) => {
     const color = shopProjectionColors[seriesIndex % shopProjectionColors.length];
+    return { row, color };
+  });
+  const visibleSeries = allPointSets.filter((seriesRow) => state.shopProjectionSelected.has(seriesRow.row.shop));
+  const values = visibleSeries.flatMap((seriesRow) => seriesRow.row.buckets.map((bucket) => bucket.sales));
+  const max = Math.max(...values, 1);
+  const pointSets = allPointSets.map(({ row, color }) => {
     const points = row.buckets.map((bucket) => {
       const index = bucketIndexes.get(bucket.key) || 0;
       const value = bucket.sales;
@@ -1294,8 +1298,7 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
       points,
       line: points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ")
     };
-  });
-  const pointSets = allPointSets.filter((row) => state.shopProjectionSelected.has(row.shop));
+  }).filter((row) => state.shopProjectionSelected.has(row.shop));
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: max * ratio,
     y: padTop + plotHeight - (plotHeight * ratio)
@@ -1304,7 +1307,10 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
     index === 0 || index === buckets.length - 1 || index === Math.floor((buckets.length - 1) / 2)
   ));
   els.shopProjectionSubtitle.textContent = `${label} ${granularity} projection by shop`;
-  renderShopProjectionControls(allPointSets, () => renderShopProjectionChart(rows, dates, label, forcedGranularity));
+  const controlPointSets = allPointSets.map(({ row, color }) => ({ shop: row.shop, color }));
+  renderShopProjectionControls(controlPointSets, (nextKeepOpen = false) => {
+    renderShopProjectionChart(rows, dates, label, forcedGranularity, nextKeepOpen);
+  }, keepOpen);
 
   if (!pointSets.length) {
     els.shopProjectionChart.innerHTML = `<div class="empty">Select at least one shop from the dropdown.</div>`;
