@@ -59,6 +59,8 @@ const els = {
   pageViewsMetric: document.getElementById("pageViewsMetric"),
   trendChart: document.getElementById("trendChart"),
   trendSubtitle: document.getElementById("trendSubtitle"),
+  shopProjectionChart: document.getElementById("shopProjectionChart"),
+  shopProjectionSubtitle: document.getElementById("shopProjectionSubtitle"),
   shopCompareBody: document.getElementById("shopCompareBody"),
   shopCompareCount: document.getElementById("shopCompareCount"),
   dayCompareBody: document.getElementById("dayCompareBody"),
@@ -822,7 +824,8 @@ function compactYen(value) {
 }
 
 function positionTrendTooltip(tooltip, event) {
-  const chartRect = els.trendChart.getBoundingClientRect();
+  const chart = tooltip.closest(".trend-chart") || els.trendChart;
+  const chartRect = chart.getBoundingClientRect();
   const tooltipRect = tooltip.getBoundingClientRect();
   const targetRect = event.currentTarget?.getBoundingClientRect();
   const clientX = event.clientX || (targetRect ? targetRect.left + targetRect.width / 2 : chartRect.left + 20);
@@ -844,11 +847,11 @@ function showTrendTooltip(point, tooltip, event) {
   positionTrendTooltip(tooltip, event);
 }
 
-function attachTrendTooltipHandlers() {
-  const tooltip = els.trendChart.querySelector(".trend-tooltip");
+function attachTrendTooltipHandlers(chart = els.trendChart) {
+  const tooltip = chart.querySelector(".trend-tooltip");
   if (!tooltip) return;
 
-  els.trendChart.querySelectorAll(".trend-hover-target").forEach((point) => {
+  chart.querySelectorAll(".trend-hover-target").forEach((point) => {
     point.addEventListener("mouseenter", (event) => showTrendTooltip(point, tooltip, event));
     point.addEventListener("mousemove", (event) => positionTrendTooltip(tooltip, event));
     point.addEventListener("mouseleave", () => {
@@ -930,7 +933,8 @@ async function update() {
       : [];
 
     renderSummary(baseRows);
-    renderTrendChart(trendRows, trendEstimates, monthlyDates, currentLabel, "monthly", shopProjectionRows);
+    renderTrendChart(trendRows, trendEstimates, monthlyDates, currentLabel, "monthly");
+    renderShopProjectionChart(shopProjectionRows, monthlyDates, currentLabel, "monthly");
     renderShopComparison(baseRows);
     renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
     renderTopItems(baseItems);
@@ -958,7 +962,8 @@ async function update() {
     : [];
 
   renderSummary(baseRows);
-  renderTrendChart(trendRows, trendEstimates, chartDates, currentLabel, "", shopProjectionRows);
+  renderTrendChart(trendRows, trendEstimates, chartDates, currentLabel);
+  renderShopProjectionChart(shopProjectionRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderTopItems(baseItems);
@@ -998,6 +1003,8 @@ function renderEmptyState() {
   els.pageViewsMetric.textContent = "-";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
+  els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
+  els.shopProjectionChart.innerHTML = `<div class="empty">Choose one genre or shop to see TENKi shop projections.</div>`;
   const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
   els.shopCompareCount.textContent = prompt;
   els.shopCompareBody.innerHTML = `<tr><td colspan="5">${prompt} to compare shops.</td></tr>`;
@@ -1099,7 +1106,7 @@ function renderSummary(rows) {
   els.pageViewsMetric.textContent = whole.format(totals.pageViews);
 }
 
-function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = "", shopProjectionRows = []) {
+function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = "") {
   if (!dates.length) {
     els.trendSubtitle.textContent = "Choose a day or period";
     els.trendChart.innerHTML = `<div class="empty">Choose dates to see sales trends.</div>`;
@@ -1110,13 +1117,11 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
   const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
   const buckets = aggregateTrendRows(rows, dates, granularity);
   const estimateBuckets = aggregateTrendRows(estimateRows, dates, granularity, "predictedSales");
-  const shopProjectionSeries = buildShopProjectionSeries(shopProjectionRows, dates, granularity);
   const values = buckets.map((bucket) => bucket.sales);
   const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
   const estimateBucketsWithData = estimateBuckets.filter((bucket) => bucket.rowCount > 0);
   const estimateValues = estimateBucketsWithData.map((bucket) => bucket.sales);
-  const shopProjectionValues = shopProjectionSeries.flatMap((series) => series.buckets.map((bucket) => bucket.sales));
-  const max = Math.max(...values, ...estimateValues, ...shopProjectionValues, 1);
+  const max = Math.max(...values, ...estimateValues, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -1150,29 +1155,6 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
       dates: bucket.dates
     };
   });
-  const shopProjectionPointSets = shopProjectionSeries.map((series, seriesIndex) => {
-    const color = shopProjectionColors[seriesIndex % shopProjectionColors.length];
-    const points = series.buckets.map((bucket) => {
-      const index = bucketIndexes.get(bucket.key) || 0;
-      const value = bucket.sales;
-      const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
-      const y = padTop + plotHeight - ((value / max) * plotHeight);
-      return {
-        x,
-        y,
-        value,
-        label: bucket.label,
-        key: bucket.key,
-        dates: bucket.dates
-      };
-    });
-    return {
-      shop: series.shop,
-      color,
-      points,
-      line: points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ")
-    };
-  });
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const estimateLine = estimatePoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
@@ -1196,9 +1178,6 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
       `).join("")}
       <polygon points="${area}" class="trend-area"></polygon>
       ${estimatePoints.length ? `<polyline points="${estimateLine}" class="trend-estimate-line"></polyline>` : ""}
-      ${shopProjectionPointSets.map((series) => `
-        <polyline points="${series.line}" class="trend-shop-projection-line" style="stroke: ${series.color}"></polyline>
-      `).join("")}
       <polyline points="${line}" class="trend-line"></polyline>
       ${estimatePoints.map((point) => {
         const tooltip = escapeHtml(`${point.label}\nModel estimate benchmark: ${yen.format(point.value)}\nTENKi-trained model estimate, not reported competitor sales`);
@@ -1215,21 +1194,6 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
           </circle>
         `;
       }).join("")}
-      ${shopProjectionPointSets.flatMap((series) => series.points.map((point) => {
-        const tooltip = escapeHtml(`${point.label}\nShop ${series.shop} projection: ${yen.format(point.value)}\nTENKi shop projection for ${genreLabel(els.genreSelect.value)}`);
-        return `
-          <circle
-            cx="${point.x.toFixed(1)}"
-            cy="${point.y.toFixed(1)}"
-            r="7"
-            class="trend-hover-target shop-projection-target"
-            fill="transparent"
-            stroke="transparent"
-            tabindex="0"
-            data-tooltip="${tooltip}">
-          </circle>
-        `;
-      })).join("")}
       ${points.map((point) => {
         const hasEvent = showEventMarkers && eventsForDates(point.dates).length > 0;
         const tooltip = escapeHtml(pointTooltip(point));
@@ -1259,6 +1223,95 @@ function renderTrendChart(rows, estimateRows, dates, label, forcedGranularity = 
     <div class="trend-tooltip" hidden></div>
   `;
   attachTrendTooltipHandlers();
+}
+
+function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
+  if (!dates.length) {
+    els.shopProjectionSubtitle.textContent = "Choose a day or period";
+    els.shopProjectionChart.innerHTML = `<div class="empty">Choose dates to see TENKi shop projections.</div>`;
+    return;
+  }
+
+  if (!rows.length) {
+    els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
+    els.shopProjectionChart.innerHTML = `<div class="empty">Choose one product genre or shop to see separate TENKi shop projection lines.</div>`;
+    return;
+  }
+
+  const granularity = forcedGranularity || els.granularitySelect.value || "daily";
+  const buckets = aggregateTrendRows([], dates, granularity);
+  const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
+  const series = buildShopProjectionSeries(rows, dates, granularity);
+  const values = series.flatMap((row) => row.buckets.map((bucket) => bucket.sales));
+  const max = Math.max(...values, 1);
+  const width = 760;
+  const height = 230;
+  const padX = 62;
+  const padTop = 22;
+  const padBottom = 44;
+  const plotWidth = width - (padX * 2);
+  const plotHeight = height - padTop - padBottom;
+  const pointSets = series.map((row, seriesIndex) => {
+    const color = shopProjectionColors[seriesIndex % shopProjectionColors.length];
+    const points = row.buckets.map((bucket) => {
+      const index = bucketIndexes.get(bucket.key) || 0;
+      const value = bucket.sales;
+      const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
+      const y = padTop + plotHeight - ((value / max) * plotHeight);
+      return {
+        x,
+        y,
+        value,
+        label: bucket.label
+      };
+    });
+    return {
+      shop: row.shop,
+      color,
+      points,
+      line: points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ")
+    };
+  });
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: max * ratio,
+    y: padTop + plotHeight - (plotHeight * ratio)
+  }));
+  const ticks = buckets.filter((_, index) => (
+    index === 0 || index === buckets.length - 1 || index === Math.floor((buckets.length - 1) / 2)
+  ));
+  els.shopProjectionSubtitle.textContent = `${label} ${granularity} projection by shop`;
+
+  els.shopProjectionChart.innerHTML = `
+    <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="TENKi shop projection chart">
+      ${yTicks.map((tick) => `
+        <line x1="${padX}" y1="${tick.y.toFixed(1)}" x2="${width - padX}" y2="${tick.y.toFixed(1)}" class="trend-grid"></line>
+        <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
+      `).join("")}
+      ${pointSets.map((row) => `
+        <polyline points="${row.line}" class="trend-shop-projection-line" style="stroke: ${row.color}"></polyline>
+      `).join("")}
+      ${pointSets.flatMap((row) => row.points.map((point) => {
+        const tooltip = escapeHtml(`${point.label}\nShop ${row.shop} projection: ${yen.format(point.value)}\nTENKi shop projection for ${genreLabel(els.genreSelect.value)}`);
+        return `
+          <circle
+            cx="${point.x.toFixed(1)}"
+            cy="${point.y.toFixed(1)}"
+            r="7"
+            class="trend-hover-target shop-projection-target"
+            fill="transparent"
+            stroke="transparent"
+            tabindex="0"
+            data-tooltip="${tooltip}">
+          </circle>
+        `;
+      })).join("")}
+      ${ticks.map((point) => `
+        <text x="${(buckets.length === 1 ? width / 2 : padX + (plotWidth * bucketIndexes.get(point.key)) / (buckets.length - 1)).toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.label}</text>
+      `).join("")}
+    </svg>
+    <div class="trend-tooltip" hidden></div>
+  `;
+  attachTrendTooltipHandlers(els.shopProjectionChart);
 }
 
 function renderTopItems(rows) {
