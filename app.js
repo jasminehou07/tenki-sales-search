@@ -2,10 +2,11 @@ const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
 const ESTIMATES_URL = "data/rakuten_estimates.csv";
 const SHOP_ESTIMATES_URL = "data/rakuten_shop_estimates.csv";
+const RANK_CURVES_URL = "data/rank_curves.csv?v=20260609-rank-curves";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
-const RANK_DATA_VERSION = "20260604-rank-fill-fallback";
+const RANK_DATA_VERSION = "20260609-rank-curves";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -14,6 +15,7 @@ const state = {
   events: [],
   estimates: [],
   shopEstimates: [],
+  rankCurves: new Map(),
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
   loadedRankGapMonths: new Map(),
@@ -521,6 +523,14 @@ function rankGapFromCsv(row) {
     upperRank: Number(row.upper_rank) || 0,
     lowerSales: Number(row.lower_sales) || 0,
     upperSales: Number(row.upper_sales) || 0
+  };
+}
+
+function rankCurveFromCsv(row) {
+  return {
+    genre: row.genre,
+    rank: Number(row.rank) || 0,
+    estimatedSales: Number(row.estimated_sales) || 0
   };
 }
 
@@ -1142,6 +1152,7 @@ function renderRankGapEstimates(rows, dates) {
     values.sort((a, b) => a - b);
     fallbackByRank.set(rank, values[Math.floor(values.length / 2)]);
   });
+  const curveByRank = state.rankCurves.get(genre) || new Map();
 
   const byRank = new Map();
   filtered.forEach((row) => {
@@ -1179,15 +1190,17 @@ function renderRankGapEstimates(rows, dates) {
     const row = byRank.get(rank) || { rank, shops: new Set(), sales: 0, salesKnown: false, estimatedSales: 0, estimateKnown: false, source: "missing" };
     const isActual = row.source === "actual";
     const fallbackSales = fallbackByRank.get(rank);
-    const hasFallbackSales = !row.salesKnown && !row.estimateKnown && Number.isFinite(fallbackSales);
-    const hasEstimatedSales = (row.estimateKnown || hasFallbackSales) && !row.salesKnown;
+    const curveSales = curveByRank.get(rank);
+    const hasCurveSales = !row.salesKnown && !row.estimateKnown && Number.isFinite(curveSales);
+    const hasFallbackSales = !row.salesKnown && !row.estimateKnown && !hasCurveSales && Number.isFinite(fallbackSales);
+    const hasEstimatedSales = (row.estimateKnown || hasCurveSales || hasFallbackSales) && !row.salesKnown;
     const isEstimated = row.source === "estimated" || hasEstimatedSales;
     const shopText = isActual ? [...row.shops].map((shop) => `Shop ${shop}`).join(", ") : "Unknown shop";
-    const displaySales = row.salesKnown ? row.sales : row.estimateKnown ? row.estimatedSales : hasFallbackSales ? fallbackSales : null;
+    const displaySales = row.salesKnown ? row.sales : row.estimateKnown ? row.estimatedSales : hasCurveSales ? curveSales : hasFallbackSales ? fallbackSales : null;
     const source = isActual
       ? row.salesKnown
         ? `<span class="source-pill actual">TENKi actual</span>`
-        : row.estimateKnown || hasFallbackSales
+        : row.estimateKnown || hasCurveSales || hasFallbackSales
           ? `<span class="source-pill estimated">Estimated</span>`
           : `<span class="source-pill actual">TENKi rank</span>`
       : isEstimated
@@ -1332,11 +1345,12 @@ function renderEvents(date) {
 
 async function init() {
   try {
-    const [optionsText, eventsText, estimatesText, shopEstimatesText] = await Promise.all([
+    const [optionsText, eventsText, estimatesText, shopEstimatesText, rankCurvesText] = await Promise.all([
       fetch(OPTIONS_URL).then((response) => response.text()),
       fetch(EVENTS_URL).then((response) => response.text()),
       fetch(ESTIMATES_URL).then((response) => response.text()),
-      fetch(SHOP_ESTIMATES_URL).then((response) => response.text())
+      fetch(SHOP_ESTIMATES_URL).then((response) => response.text()),
+      fetch(RANK_CURVES_URL).then((response) => response.text())
     ]);
 
     const options = parseCsv(optionsText);
@@ -1352,6 +1366,11 @@ async function init() {
     state.events = parseCsv(eventsText);
     state.estimates = parseCsv(estimatesText).map(estimateFromCsv);
     state.shopEstimates = parseCsv(shopEstimatesText).map(estimateFromCsv);
+    state.rankCurves = parseCsv(rankCurvesText).map(rankCurveFromCsv).reduce((map, row) => {
+      if (!map.has(row.genre)) map.set(row.genre, new Map());
+      map.get(row.genre).set(row.rank, row.estimatedSales);
+      return map;
+    }, new Map());
     const defaultPreset = [...els.datePresetButtons].find((button) => button.dataset.preset === "183");
     if (defaultPreset) defaultPreset.classList.add("active");
     applyDatePreset("183", false);
