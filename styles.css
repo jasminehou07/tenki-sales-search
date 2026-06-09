@@ -471,6 +471,91 @@ input:disabled {
   padding: 2px 4px 0;
 }
 
+.shop-projection-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 8px 16px 2px;
+}
+
+.shop-projection-controls small {
+  color: #7a838d;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.shop-picker {
+  position: relative;
+}
+
+.shop-picker summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #cfd8e3;
+  border-radius: 999px;
+  color: #26323f;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 750;
+  list-style: none;
+}
+
+.shop-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.shop-picker summary::after {
+  content: "v";
+  margin-left: 8px;
+  color: #657283;
+  font-size: 0.78rem;
+}
+
+.shop-picker-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  width: min(260px, 78vw);
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(33, 45, 61, 0.16);
+}
+
+.shop-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  color: #2f3a47;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.shop-picker-option:hover {
+  background: #f4f7fa;
+}
+
+.shop-picker-option input {
+  margin: 0;
+}
+
+.shop-picker-option i {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+}
+
 .shop-projection-key {
   display: inline-flex;
   align-items: center;

@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260609-shop-color-legend">
+  <link rel="stylesheet" href="styles.css?v=20260609-shop-checkbox-filter">
 </head>
 <body>
   <header class="app-header">
@@ -153,10 +153,7 @@
           <span id="shopProjectionSubtitle">Choose one genre or shop</span>
         </div>
       </div>
-      <div class="trend-legend" aria-label="TENKi shop projection legend">
-        <span><i class="legend-line shop-line"></i>Projected sales by TENKi shop</span>
-        <small>Each colored line is one TENKi shop for the selected genre or shop.</small>
-      </div>
+      <div id="shopProjectionControls" class="shop-projection-controls"></div>
       <div id="shopProjectionChart" class="trend-chart">
         <div class="empty">Choose one genre or shop to see TENKi shop projections.</div>
       </div>
@@ -284,6 +281,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260609-shop-color-legend"></script>
+  <script src="app.js?v=20260609-shop-checkbox-filter"></script>
 </body>
 </html>

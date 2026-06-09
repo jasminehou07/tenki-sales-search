@@ -24,7 +24,9 @@ const state = {
   genreLabels: new Map(),
   byDate: new Map(),
   byShop: new Map(),
-  byGenre: new Map()
+  byGenre: new Map(),
+  shopProjectionSelected: new Set(),
+  shopProjectionSelectionKey: ""
 };
 
 const els = {
@@ -59,6 +61,7 @@ const els = {
   trendSubtitle: document.getElementById("trendSubtitle"),
   shopProjectionChart: document.getElementById("shopProjectionChart"),
   shopProjectionSubtitle: document.getElementById("shopProjectionSubtitle"),
+  shopProjectionControls: document.getElementById("shopProjectionControls"),
   shopCompareBody: document.getElementById("shopCompareBody"),
   shopCompareCount: document.getElementById("shopCompareCount"),
   dayCompareBody: document.getElementById("dayCompareBody"),
@@ -797,6 +800,63 @@ function buildShopProjectionSeries(rows, dates, granularity) {
   }).filter((series) => series.buckets.length);
 }
 
+function syncShopProjectionSelection(shops) {
+  const key = shops.join("|");
+  if (state.shopProjectionSelectionKey !== key) {
+    state.shopProjectionSelectionKey = key;
+    state.shopProjectionSelected = new Set(shops);
+  }
+  const selected = [...state.shopProjectionSelected].filter((shop) => shops.includes(shop));
+  state.shopProjectionSelected = selected.length ? new Set(selected) : new Set(shops);
+}
+
+function renderShopProjectionControls(pointSets, renderAgain) {
+  if (!pointSets.length) {
+    els.shopProjectionControls.innerHTML = "";
+    return;
+  }
+
+  const allSelected = pointSets.every((row) => state.shopProjectionSelected.has(row.shop));
+  els.shopProjectionControls.innerHTML = `
+    <details class="shop-picker">
+      <summary>${allSelected ? "All shops" : `${state.shopProjectionSelected.size} shops selected`}</summary>
+      <div class="shop-picker-menu">
+        <label class="shop-picker-option">
+          <input type="checkbox" data-shop-picker-all ${allSelected ? "checked" : ""}>
+          All shops
+        </label>
+        ${pointSets.map((row) => `
+          <label class="shop-picker-option">
+            <input type="checkbox" data-shop="${row.shop}" ${state.shopProjectionSelected.has(row.shop) ? "checked" : ""}>
+            <i style="background: ${row.color}"></i>
+            Shop ${row.shop}
+          </label>
+        `).join("")}
+      </div>
+    </details>
+    <small>Model-predicted values, not actual sales.</small>
+  `;
+
+  const allToggle = els.shopProjectionControls.querySelector("[data-shop-picker-all]");
+  allToggle?.addEventListener("change", () => {
+    state.shopProjectionSelected = allToggle.checked
+      ? new Set(pointSets.map((row) => row.shop))
+      : new Set();
+    renderAgain();
+  });
+
+  els.shopProjectionControls.querySelectorAll("[data-shop]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const selected = new Set();
+      els.shopProjectionControls.querySelectorAll("[data-shop]").forEach((shopInput) => {
+        if (shopInput.checked) selected.add(shopInput.dataset.shop);
+      });
+      state.shopProjectionSelected = selected;
+      renderAgain();
+    });
+  });
+}
+
 function eventsForDates(dates) {
   if (!dates.length) return [];
   const first = dates[0];
@@ -1000,6 +1060,7 @@ function renderEmptyState() {
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
   els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
+  els.shopProjectionControls.innerHTML = "";
   els.shopProjectionChart.innerHTML = `<div class="empty">Choose one genre or shop to see TENKi shop projections.</div>`;
   const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
   els.shopCompareCount.textContent = prompt;
@@ -1186,12 +1247,14 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
 function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
   if (!dates.length) {
     els.shopProjectionSubtitle.textContent = "Choose a day or period";
+    els.shopProjectionControls.innerHTML = "";
     els.shopProjectionChart.innerHTML = `<div class="empty">Choose dates to see TENKi shop projections.</div>`;
     return;
   }
 
   if (!rows.length) {
     els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
+    els.shopProjectionControls.innerHTML = "";
     els.shopProjectionChart.innerHTML = `<div class="empty">Choose one product genre or shop to see separate TENKi shop projection lines.</div>`;
     return;
   }
@@ -1200,7 +1263,9 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
   const buckets = aggregateTrendRows([], dates, granularity);
   const bucketIndexes = new Map(buckets.map((bucket, index) => [bucket.key, index]));
   const series = buildShopProjectionSeries(rows, dates, granularity);
-  const values = series.flatMap((row) => row.buckets.map((bucket) => bucket.sales));
+  syncShopProjectionSelection(series.map((row) => row.shop));
+  const visibleSeries = series.filter((row) => state.shopProjectionSelected.has(row.shop));
+  const values = visibleSeries.flatMap((row) => row.buckets.map((bucket) => bucket.sales));
   const max = Math.max(...values, 1);
   const width = 760;
   const height = 230;
@@ -1209,7 +1274,7 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
   const padBottom = 44;
   const plotWidth = width - (padX * 2);
   const plotHeight = height - padTop - padBottom;
-  const pointSets = series.map((row, seriesIndex) => {
+  const allPointSets = series.map((row, seriesIndex) => {
     const color = shopProjectionColors[seriesIndex % shopProjectionColors.length];
     const points = row.buckets.map((bucket) => {
       const index = bucketIndexes.get(bucket.key) || 0;
@@ -1230,6 +1295,7 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
       line: points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ")
     };
   });
+  const pointSets = allPointSets.filter((row) => state.shopProjectionSelected.has(row.shop));
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: max * ratio,
     y: padTop + plotHeight - (plotHeight * ratio)
@@ -1238,6 +1304,12 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "") {
     index === 0 || index === buckets.length - 1 || index === Math.floor((buckets.length - 1) / 2)
   ));
   els.shopProjectionSubtitle.textContent = `${label} ${granularity} projection by shop`;
+  renderShopProjectionControls(allPointSets, () => renderShopProjectionChart(rows, dates, label, forcedGranularity));
+
+  if (!pointSets.length) {
+    els.shopProjectionChart.innerHTML = `<div class="empty">Select at least one shop from the dropdown.</div>`;
+    return;
+  }
 
   els.shopProjectionChart.innerHTML = `
     <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="TENKi shop projection chart">
