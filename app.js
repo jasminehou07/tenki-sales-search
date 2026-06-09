@@ -1489,41 +1489,24 @@ function renderRankGapEstimates(rows, dates) {
     return { sales: 0, source: "missing" };
   };
 
-  const displayRows = [];
-  const byShop = new Map();
-  filtered.forEach((row) => {
-    if (row.source !== "actual" || !row.shop) return;
-    const estimate = estimateForRank(row.rank);
-    if (estimate.source === "actual") {
-      const current = byShop.get(row.shop) || {
-        shop: row.shop,
-        sales: 0,
-        ranks: new Set()
-      };
-      current.sales += estimate.sales;
-      current.ranks.add(row.rank);
-      byShop.set(row.shop, current);
-      return;
-    }
+  const topRows = Array.from({ length: 20 }, (_, index) => {
+    const rank = index + 1;
+    const rankRows = filtered.filter((row) => row.rank === rank);
+    const shops = [...new Set(rankRows
+      .filter((row) => row.source === "actual" && row.shop)
+      .map((row) => row.shop))]
+      .sort((a, b) => a.localeCompare(b));
+    const estimate = estimateForRank(rank);
 
-    displayRows.push({
-      label: `Estimated shop (rank #${whole.format(row.rank)})`,
+    return {
+      rank,
+      label: shops.length
+        ? shops.map((shopId) => `Shop ${shopId}`).join(", ")
+        : `Estimated shop (rank #${whole.format(rank)})`,
       sales: estimate.sales,
-      source: "estimated"
-    });
+      source: shops.length ? "actual" : "estimated"
+    };
   });
-
-  byShop.forEach((row) => {
-    displayRows.push({
-      label: `Shop ${row.shop}`,
-      sales: row.sales,
-      source: "actual"
-    });
-  });
-
-  const topRows = displayRows
-    .sort((a, b) => b.sales - a.sales || a.label.localeCompare(b.label))
-    .slice(0, 20);
 
   els.rankGapCount.textContent = `Top shop totals for ${rankDate}`;
   els.rankGapBody.innerHTML = topRows.map((row, index) => {
@@ -1532,7 +1515,7 @@ function renderRankGapEstimates(rows, dates) {
       : `<span class="source-pill estimated">Estimated</span>`;
     return `
       <tr class="${row.source === "estimated" ? "estimated-rank-row" : "actual-rank-row"}">
-        <td>#${whole.format(index + 1)}</td>
+        <td>#${whole.format(row.rank || index + 1)}</td>
         <td>${row.label}</td>
         <td>${yen.format(row.sales)}</td>
         <td>${source}</td>
