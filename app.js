@@ -1502,9 +1502,11 @@ function renderRankGapEstimates(rows, dates) {
     const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
     const primaryRank = uniqueRanks[0];
     const shops = primaryShopsByRank.get(primaryRank) || [];
+    const rankEstimate = estimateForRank(primaryRank);
     shops.push({
       shopId,
-      sales: estimateForRank(primaryRank).sales
+      sales: rankEstimate.sales,
+      source: rankEstimate.source
     });
     primaryShopsByRank.set(primaryRank, shops);
   });
@@ -1525,7 +1527,7 @@ function renderRankGapEstimates(rows, dates) {
       sales: shops.length
         ? shops.reduce((total, shop) => total + shop.sales, 0)
         : estimate.sales,
-      source: shops.length ? "actual" : "estimated"
+      source: shops.length && shops.every((shop) => shop.source === "actual") ? "actual" : "estimated"
     };
   });
 
