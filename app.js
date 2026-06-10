@@ -1,12 +1,13 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
-const RANK_CURVES_URL = "data/rank_curves.csv?v=20260609-holdout-rank-curves";
+const RANK_CURVES_URL = "data/rank_curves.csv?v=20260610-rank-event-factors";
+const RANK_EVENT_FACTORS_URL = "data/rank_event_factors.csv?v=20260610-rank-event-factors";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260609-holdout-rank-curves";
+const RANK_DATA_VERSION = "20260610-rank-event-factors";
 const SHOP_PROJECTION_VERSION = "20260610-genre-event-shop-projection";
 const ALL_TIME_DATA_VERSION = "20260610-genre-event-shop-projection";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -16,6 +17,8 @@ const state = {
   filtered: [],
   events: [],
   rankCurves: new Map(),
+  rankEventFactors: new Map(),
+  globalRankEventFactors: new Map(),
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
   loadedShopEstimateMonths: new Map(),
@@ -540,6 +543,14 @@ function rankCurveFromCsv(row) {
     genre: row.genre,
     rank: Number(row.rank) || 0,
     estimatedSales: Number(row.estimated_sales) || 0
+  };
+}
+
+function rankEventFactorFromCsv(row) {
+  return {
+    genre: row.genre,
+    event: row.event,
+    factor: Number(row.factor) || 1
   };
 }
 
@@ -1471,6 +1482,15 @@ function renderRankGapEstimates(rows, dates) {
     fallbackByRank.set(rank, values[Math.floor(values.length / 2)]);
   });
   const curveByRank = state.rankCurves.get(genre) || new Map();
+  const genreEventFactors = state.rankEventFactors.get(genre) || new Map();
+  const activeRankEventNames = state.events
+    .filter((event) => event.start_date <= rankDate && event.end_date >= rankDate)
+    .map((event) => event.name);
+  const rankEventMultiplier = activeRankEventNames.reduce((best, eventName) => {
+    const factor = genreEventFactors.get(eventName) || state.globalRankEventFactors.get(eventName) || 1;
+    return Math.max(best, Number.isFinite(factor) ? factor : 1);
+  }, 1);
+  const applyRankEventMultiplier = (sales) => sales * rankEventMultiplier;
 
   const estimateForRank = (rank) => {
     const rankRows = filtered.filter((row) => row.rank === rank);
@@ -1481,10 +1501,10 @@ function renderRankGapEstimates(rows, dates) {
     if (sameDayEstimate) return { sales: sameDayEstimate.sales, source: "estimated" };
 
     const curveSales = curveByRank.get(rank);
-    if (Number.isFinite(curveSales)) return { sales: curveSales, source: "estimated" };
+    if (Number.isFinite(curveSales)) return { sales: applyRankEventMultiplier(curveSales), source: "estimated" };
 
     const fallbackSales = fallbackByRank.get(rank);
-    if (Number.isFinite(fallbackSales)) return { sales: fallbackSales, source: "estimated" };
+    if (Number.isFinite(fallbackSales)) return { sales: applyRankEventMultiplier(fallbackSales), source: "estimated" };
 
     return { sales: 0, source: "missing" };
   };
@@ -1498,10 +1518,10 @@ function renderRankGapEstimates(rows, dates) {
     if (sameDayEstimate) return { sales: sameDayEstimate.sales, source: "estimated" };
 
     const curveSales = curveByRank.get(rank);
-    if (Number.isFinite(curveSales)) return { sales: curveSales, source: "estimated" };
+    if (Number.isFinite(curveSales)) return { sales: applyRankEventMultiplier(curveSales), source: "estimated" };
 
     const fallbackSales = fallbackByRank.get(rank);
-    if (Number.isFinite(fallbackSales)) return { sales: fallbackSales, source: "estimated" };
+    if (Number.isFinite(fallbackSales)) return { sales: applyRankEventMultiplier(fallbackSales), source: "estimated" };
 
     return { sales: 0, source: "missing" };
   };
@@ -1709,10 +1729,11 @@ function renderEvents(date) {
 
 async function init() {
   try {
-    const [optionsText, eventsText, rankCurvesText] = await Promise.all([
+    const [optionsText, eventsText, rankCurvesText, rankEventFactorsText] = await Promise.all([
       fetch(OPTIONS_URL).then((response) => response.text()),
       fetch(EVENTS_URL).then((response) => response.text()),
-      fetch(RANK_CURVES_URL).then((response) => response.text())
+      fetch(RANK_CURVES_URL).then((response) => response.text()),
+      fetch(RANK_EVENT_FACTORS_URL).then((response) => response.text())
     ]);
 
     const options = parseCsv(optionsText);
@@ -1731,6 +1752,17 @@ async function init() {
       map.get(row.genre).set(row.rank, row.estimatedSales);
       return map;
     }, new Map());
+    state.rankEventFactors = new Map();
+    state.globalRankEventFactors = new Map();
+    parseCsv(rankEventFactorsText).map(rankEventFactorFromCsv).forEach((row) => {
+      if (!row.event) return;
+      if (row.genre === "__global__") {
+        state.globalRankEventFactors.set(row.event, row.factor);
+        return;
+      }
+      if (!state.rankEventFactors.has(row.genre)) state.rankEventFactors.set(row.genre, new Map());
+      state.rankEventFactors.get(row.genre).set(row.event, row.factor);
+    });
     const defaultPreset = [...els.datePresetButtons].find((button) => button.dataset.preset === "183");
     if (defaultPreset) defaultPreset.classList.add("active");
     applyDatePreset("183", false);
