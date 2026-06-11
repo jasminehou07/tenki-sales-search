@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260611-slim-rank-chart">
+  <link rel="stylesheet" href="styles.css?v=20260611-daily-default">
 </head>
 <body>
   <header class="app-header">
@@ -78,14 +78,7 @@
             </div>
           </div>
         </div>
-        <label class="granularity-label">
-          <span class="sr-only">Trend grouping</span>
-          <select id="granularitySelect" class="date-pill granularity-select" disabled>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </label>
+        <input id="granularitySelect" type="hidden" value="daily">
       </div>
       <div class="date-filter-grid legacy-date-controls" aria-hidden="true">
         <label>
@@ -237,6 +230,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260611-slim-rank-chart"></script>
+  <script src="app.js?v=20260611-daily-default"></script>
 </body>
 </html>
