@@ -78,6 +78,7 @@ const els = {
   dayCompareStatus: document.getElementById("dayCompareStatus"),
   topItemsBody: document.getElementById("topItemsBody"),
   topItemsCount: document.getElementById("topItemsCount"),
+  rankGapChart: document.getElementById("rankGapChart"),
   rankGapBody: document.getElementById("rankGapBody"),
   rankGapCount: document.getElementById("rankGapCount"),
   eventsTitle: document.getElementById("eventsTitle"),
@@ -1148,6 +1149,7 @@ function renderEmptyState() {
   els.topItemsCount.textContent = prompt;
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
   els.rankGapCount.textContent = prompt;
+  els.rankGapChart.innerHTML = `<div class="empty">${prompt} to see rank estimates.</div>`;
   els.rankGapBody.innerHTML = `<tr><td colspan="4">${prompt} to see rank 1-20 estimates.</td></tr>`;
 }
 
@@ -1531,15 +1533,94 @@ function renderTopItems(rows) {
   `).join("");
 }
 
+function renderRankGapChart(rows, rankDate) {
+  if (!rows.length) {
+    els.rankGapChart.innerHTML = `<div class="empty">No rank estimates to chart.</div>`;
+    return;
+  }
+
+  const width = 760;
+  const height = 250;
+  const padLeft = 64;
+  const padRight = 26;
+  const padTop = 22;
+  const padBottom = 42;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+  const maxValue = Math.max(...rows.map((row) => Math.max(row.salesHigh || row.sales, row.sales || 0)), 1);
+  const barGap = 6;
+  const barWidth = Math.max(10, (plotWidth / rows.length) - barGap);
+  const scaleY = (value) => padTop + plotHeight - ((value / maxValue) * plotHeight);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: maxValue * ratio,
+    y: scaleY(maxValue * ratio)
+  }));
+
+  els.rankGapChart.innerHTML = `
+    <svg class="rank-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated sales by rank for ${rankDate}">
+      ${yTicks.map((tick) => `
+        <line x1="${padLeft}" y1="${tick.y.toFixed(1)}" x2="${width - padRight}" y2="${tick.y.toFixed(1)}" class="trend-grid"></line>
+        <text x="${padLeft - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
+      `).join("")}
+      ${rows.map((row, index) => {
+        const x = padLeft + (index * (plotWidth / rows.length)) + (barGap / 2);
+        const y = scaleY(row.sales);
+        const lowY = scaleY(row.salesLow || row.sales);
+        const highY = scaleY(row.salesHigh || row.sales);
+        const barHeight = Math.max(2, padTop + plotHeight - y);
+        const centerX = x + (barWidth / 2);
+        const isActual = row.source === "actual";
+        const tooltip = escapeHtml(`Rank #${row.rank}\n${isActual ? "Known value" : "Model estimate"}\nExact: ${yen.format(row.sales)}\n95% low: ${yen.format(row.salesLow || row.sales)}\n95% high: ${yen.format(row.salesHigh || row.sales)}`);
+        return `
+          <rect
+            x="${x.toFixed(1)}"
+            y="${y.toFixed(1)}"
+            width="${barWidth.toFixed(1)}"
+            height="${barHeight.toFixed(1)}"
+            rx="3"
+            class="rank-bar ${isActual ? "actual" : "estimated"}">
+          </rect>
+          <line x1="${centerX.toFixed(1)}" y1="${highY.toFixed(1)}" x2="${centerX.toFixed(1)}" y2="${lowY.toFixed(1)}" class="rank-ci-line"></line>
+          <line x1="${(centerX - 4).toFixed(1)}" y1="${highY.toFixed(1)}" x2="${(centerX + 4).toFixed(1)}" y2="${highY.toFixed(1)}" class="rank-ci-line"></line>
+          <line x1="${(centerX - 4).toFixed(1)}" y1="${lowY.toFixed(1)}" x2="${(centerX + 4).toFixed(1)}" y2="${lowY.toFixed(1)}" class="rank-ci-line"></line>
+          <rect
+            x="${x.toFixed(1)}"
+            y="${Math.min(highY, y).toFixed(1)}"
+            width="${barWidth.toFixed(1)}"
+            height="${Math.max(16, (padTop + plotHeight - Math.min(highY, y))).toFixed(1)}"
+            fill="transparent"
+            tabindex="0"
+            class="trend-hover-target"
+            data-tooltip="${tooltip}">
+          </rect>
+        `;
+      }).join("")}
+      ${rows.map((row, index) => {
+        const x = padLeft + (index * (plotWidth / rows.length)) + (plotWidth / rows.length / 2);
+        return `<text x="${x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${row.rank}</text>`;
+      }).join("")}
+    </svg>
+    <div class="rank-chart-legend">
+      <span><i class="rank-key estimated"></i>Model estimate</span>
+      <span><i class="rank-key actual"></i>Known value</span>
+      <span><i class="rank-ci-key"></i>95% CI</span>
+    </div>
+    <div class="trend-tooltip" hidden></div>
+  `;
+  attachTrendTooltipHandlers(els.rankGapChart);
+}
+
 function renderRankGapEstimates(rows, dates) {
   const genre = els.genreSelect.value;
   if (genre === "all") {
     els.rankGapCount.textContent = "Choose one genre";
+    els.rankGapChart.innerHTML = `<div class="empty">Choose one product genre to see rank estimates.</div>`;
     els.rankGapBody.innerHTML = `<tr><td colspan="4">Choose one product genre to see a rank 1-20 table.</td></tr>`;
     return;
   }
   if (GENRES_WITHOUT_RANK_DATA.has(genre)) {
     els.rankGapCount.textContent = "No model file";
+    els.rankGapChart.innerHTML = `<div class="empty">No rank model output is available for ${genreLabel(genre)}.</div>`;
     els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank model output is available for ${genreLabel(genre)}.</td></tr>`;
     return;
   }
@@ -1550,6 +1631,7 @@ function renderRankGapEstimates(rows, dates) {
   const rankDate = [...dates].reverse().find((date) => availableRankDates.has(date));
   if (!rankDate) {
     els.rankGapCount.textContent = "No rank data";
+    els.rankGapChart.innerHTML = `<div class="empty">No rank data found for ${periodLabel(dates)} and ${genreLabel(genre)}.</div>`;
     els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${periodLabel(dates)} and ${genreLabel(genre)}.</td></tr>`;
     return;
   }
@@ -1557,6 +1639,7 @@ function renderRankGapEstimates(rows, dates) {
   const filtered = rows.filter((row) => row.date === rankDate && row.genre === genre && row.rank >= 1 && row.rank <= 20);
   if (!filtered.length) {
     els.rankGapCount.textContent = "No rank data";
+    els.rankGapChart.innerHTML = `<div class="empty">No rank data found for ${rankDate} and ${genreLabel(genre)}.</div>`;
     els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${rankDate} and ${genreLabel(genre)}.</td></tr>`;
     return;
   }
@@ -1565,12 +1648,16 @@ function renderRankGapEstimates(rows, dates) {
 
   const estimateForRank = (rank) => {
     const rankRows = filtered.filter((row) => row.rank === rank);
+    const sameDayKnown = rankRows.find((row) => row.source === "actual" && row.salesKnown);
+    if (sameDayKnown) return sameDayKnown;
     const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
-    if (sameDayEstimate) return sameDayEstimate.sales;
+    if (sameDayEstimate) return sameDayEstimate;
 
     const curveSales = curveByRank.get(rank);
-    if (Number.isFinite(curveSales)) return curveSales;
-    return 0;
+    if (Number.isFinite(curveSales)) {
+      return { rank, sales: curveSales, salesLow: curveSales, salesHigh: curveSales, source: "estimated" };
+    }
+    return { rank, sales: 0, salesLow: 0, salesHigh: 0, source: "estimated" };
   };
 
   const topRows = Array.from({ length: 20 }, (_, index) => {
@@ -1578,25 +1665,28 @@ function renderRankGapEstimates(rows, dates) {
     return {
       rank,
       label: `Rakuten rank #${whole.format(rank)}`,
-      sales: estimateForRank(rank),
-      source: "estimated"
+      ...estimateForRank(rank)
     };
   });
 
   for (let index = 1; index < topRows.length; index += 1) {
     if (topRows[index].sales > topRows[index - 1].sales) {
       topRows[index].sales = topRows[index - 1].sales;
+      topRows[index].salesLow = Math.min(topRows[index].salesLow || topRows[index].sales, topRows[index].sales);
+      topRows[index].salesHigh = Math.max(topRows[index].salesHigh || topRows[index].sales, topRows[index].sales);
     }
   }
 
   els.rankGapCount.textContent = `Rakuten model estimates for ${rankDate}`;
+  renderRankGapChart(topRows, rankDate);
   els.rankGapBody.innerHTML = topRows.map((row, index) => {
+    const isActual = row.source === "actual";
     return `
-      <tr class="estimated-rank-row">
+      <tr class="${isActual ? "actual-rank-row" : "estimated-rank-row"}">
         <td>#${whole.format(row.rank || index + 1)}</td>
         <td>${row.label}</td>
         <td>${yen.format(row.sales)}</td>
-        <td><span class="source-pill estimated">Model estimate</span></td>
+        <td><span class="source-pill ${isActual ? "actual" : "estimated"}">${isActual ? "Known value" : "Model estimate"}</span></td>
       </tr>
     `;
   }).join("");

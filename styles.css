@@ -895,6 +895,77 @@ td:nth-child(3),
   max-height: 360px;
 }
 
+.rank-gap-chart {
+  min-height: 290px;
+  padding: 4px 14px 12px;
+}
+
+.rank-chart-svg {
+  display: block;
+  height: auto;
+  max-height: 290px;
+  overflow: visible;
+  width: 100%;
+}
+
+.rank-bar {
+  transition: opacity 140ms ease;
+}
+
+.rank-bar.estimated {
+  fill: #7c5cff;
+}
+
+.rank-bar.actual {
+  fill: #0f766e;
+}
+
+.rank-ci-line {
+  stroke: #263241;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.rank-chart-legend {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.rank-chart-legend span {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.rank-key {
+  border-radius: 3px;
+  display: inline-block;
+  height: 10px;
+  width: 18px;
+}
+
+.rank-key.estimated {
+  background: #7c5cff;
+}
+
+.rank-key.actual {
+  background: #0f766e;
+}
+
+.rank-ci-key {
+  background: #263241;
+  border-radius: 999px;
+  display: inline-block;
+  height: 2px;
+  width: 20px;
+}
+
 .rank-gap-panel small {
   color: var(--muted);
   font-size: 11px;
