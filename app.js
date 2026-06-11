@@ -8,8 +8,8 @@ const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260611-gbt-rakuten-rank";
-const SHOP_PROJECTION_VERSION = "20260611-genre-lag-shop-projection";
-const ALL_TIME_DATA_VERSION = "20260611-genre-lag-shop-projection";
+const SHOP_PROJECTION_VERSION = "20260611-page-view-projection";
+const ALL_TIME_DATA_VERSION = "20260611-page-view-projection";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -60,6 +60,7 @@ const els = {
   resetButton: document.getElementById("resetButton"),
   salesMetric: document.getElementById("salesMetric"),
   unitsMetric: document.getElementById("unitsMetric"),
+  pageViewsMetricLabel: document.getElementById("pageViewsMetricLabel"),
   pageViewsMetric: document.getElementById("pageViewsMetric"),
   trendChart: document.getElementById("trendChart"),
   trendSubtitle: document.getElementById("trendSubtitle"),
@@ -518,7 +519,8 @@ function estimateFromCsv(row) {
     date: row.date,
     shop: row.shop || "",
     genre: row.genre_id || row.genre,
-    predictedSales: Number(row.predicted_sales) || 0
+    predictedSales: Number(row.predicted_sales) || 0,
+    predictedPageViews: Number(row.predicted_page_views) || 0
   };
 }
 
@@ -1038,11 +1040,12 @@ async function update() {
     const baseItems = filterRows(allTimeData.itemRows, { genre, shop });
     const trendRows = filterRows(allTimeData.monthlyRows, { genre, shop });
     const shopProjectionRows = shopProjectionRowsForChart(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
+    const summaryEstimateRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const compareRows = compareDate && state.availableDates.has(compareDate)
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
       : [];
 
-    renderSummary(baseRows);
+    renderSummary(baseRows, summaryEstimateRows);
     renderTrendChart(trendRows, monthlyDates, currentLabel, "monthly");
     renderShopProjectionChart(shopProjectionRows, monthlyDates, currentLabel, "monthly");
     renderShopComparison(baseRows);
@@ -1055,22 +1058,24 @@ async function update() {
   }
 
   const chartDates = trendDatesForPeriod(periodDates);
-  const [dateRows, itemRows, chartRows, shopEstimateRows, rankGapRows] = await Promise.all([
+  const [dateRows, itemRows, chartRows, shopEstimateRows, summaryEstimateRowsRaw, rankGapRows] = await Promise.all([
     loadPeriodDates(periodDates),
     loadPeriodItems(periodDates),
     loadPeriodDates(chartDates),
     loadPeriodShopEstimates(chartDates),
+    loadPeriodShopEstimates(periodDates),
     loadPeriodRankGaps(periodDates)
   ]);
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
   const trendRows = filterRows(chartRows, { genre, shop });
   const shopProjectionRows = shopProjectionRowsForChart(shopEstimateRows, chartDates, { genre, shop });
+  const summaryEstimateRows = filterEstimateRows(summaryEstimateRowsRaw, periodDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
-  renderSummary(baseRows);
+  renderSummary(baseRows, summaryEstimateRows);
   renderTrendChart(trendRows, chartDates, currentLabel);
   renderShopProjectionChart(shopProjectionRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
@@ -1109,6 +1114,7 @@ function shopProjectionRowsForChart(rows, dates, filters) {
 function renderEmptyState() {
   els.salesMetric.textContent = "-";
   els.unitsMetric.textContent = "-";
+  els.pageViewsMetricLabel.textContent = "Page views";
   els.pageViewsMetric.textContent = "-";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
@@ -1200,17 +1206,20 @@ async function loadAllTimeData() {
   return state.allTimeData;
 }
 
-function renderSummary(rows) {
+function renderSummary(rows, estimateRows = []) {
   const totals = rows.reduce((acc, row) => {
     acc.sales += row.sales;
     acc.units += row.units;
     acc.pageViews += row.pageViews;
     return acc;
   }, { sales: 0, units: 0, pageViews: 0 });
+  const estimatedPageViews = estimateRows.reduce((sum, row) => sum + row.predictedPageViews, 0);
+  const useEstimatedPageViews = totals.pageViews === 0 && estimatedPageViews > 0;
 
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
-  els.pageViewsMetric.textContent = whole.format(totals.pageViews);
+  els.pageViewsMetricLabel.textContent = useEstimatedPageViews ? "Page views (est.)" : "Page views";
+  els.pageViewsMetric.textContent = whole.format(useEstimatedPageViews ? estimatedPageViews : totals.pageViews);
 }
 
 function renderTrendChart(rows, dates, label, forcedGranularity = "") {
