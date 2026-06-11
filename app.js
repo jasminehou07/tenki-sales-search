@@ -7,7 +7,7 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-hide-single-day-trend";
+const RANK_DATA_VERSION = "20260611-remove-comparisons";
 const SHOP_PROJECTION_VERSION = "20260611-full-tenki-daily-estimates";
 const ALL_TIME_DATA_VERSION = "20260611-full-tenki-daily-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -126,7 +126,7 @@ function setEnabled(enabled) {
     els.granularitySelect,
     els.compareYearSelect, els.compareMonthSelect, els.compareDaySelect,
     els.resetButton
-  ].forEach((el) => {
+  ].filter(Boolean).forEach((el) => {
     el.disabled = !enabled;
   });
   els.datePresetButtons.forEach((button) => {
@@ -235,6 +235,7 @@ function isRangeMode() {
 }
 
 function selectedCompareDate() {
+  if (!els.compareYearSelect || !els.compareMonthSelect || !els.compareDaySelect) return "";
   if (!els.compareYearSelect.value || !els.compareMonthSelect.value || !els.compareDaySelect.value) return "";
   return `${els.compareYearSelect.value}-${els.compareMonthSelect.value}-${els.compareDaySelect.value}`;
 }
@@ -249,14 +250,14 @@ function buildDateControls(dateRows) {
 
   els.yearSelect.innerHTML = `<option value="">Year</option>`;
   els.endYearSelect.innerHTML = `<option value="">Year</option>`;
-  els.compareYearSelect.innerHTML = `<option value="">Year</option>`;
+  if (els.compareYearSelect) els.compareYearSelect.innerHTML = `<option value="">Year</option>`;
   years.forEach((year) => {
     const option = document.createElement("option");
     option.value = year;
     option.textContent = year;
     els.yearSelect.appendChild(option);
     els.endYearSelect.appendChild(option.cloneNode(true));
-    els.compareYearSelect.appendChild(option.cloneNode(true));
+    if (els.compareYearSelect) els.compareYearSelect.appendChild(option.cloneNode(true));
   });
   [els.startDateInput, els.endDateInput].forEach((input) => {
     input.min = state.firstDate;
@@ -310,6 +311,7 @@ function refreshDayOptions(keepValue = true, chooseFirst = false) {
 }
 
 function refreshCompareMonthOptions(keepValue = true, chooseFirst = false) {
+  if (!els.compareYearSelect || !els.compareMonthSelect) return;
   const oldValue = keepValue ? els.compareMonthSelect.value : "";
   const year = els.compareYearSelect.value;
   const months = [...new Set(state.dates
@@ -328,6 +330,7 @@ function refreshCompareMonthOptions(keepValue = true, chooseFirst = false) {
 }
 
 function refreshCompareDayOptions(keepValue = true, chooseFirst = false) {
+  if (!els.compareYearSelect || !els.compareMonthSelect || !els.compareDaySelect) return;
   const oldValue = keepValue ? els.compareDaySelect.value : "";
   const year = els.compareYearSelect.value;
   const month = els.compareMonthSelect.value;
@@ -425,6 +428,7 @@ function setDateParts(date) {
 }
 
 function setCompareDateParts(date) {
+  if (!els.compareYearSelect || !els.compareMonthSelect || !els.compareDaySelect) return;
   if (!date || !state.availableDates.has(date)) {
     els.compareYearSelect.value = "";
     els.compareYearSelect.selectedIndex = 0;
@@ -1161,10 +1165,14 @@ function renderEmptyState() {
   els.shopProjectionControls.innerHTML = "";
   els.shopProjectionChart.innerHTML = `<div class="empty">Choose one genre or shop to see TENKi shop projections.</div>`;
   const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
-  els.shopCompareCount.textContent = prompt;
-  els.shopCompareBody.innerHTML = `<tr><td colspan="5">${prompt} to compare shops.</td></tr>`;
-  els.dayCompareStatus.textContent = prompt;
-  els.dayCompareBody.innerHTML = `<div class="empty">${prompt} to compare sales by date.</div>`;
+  if (els.shopCompareCount && els.shopCompareBody) {
+    els.shopCompareCount.textContent = prompt;
+    els.shopCompareBody.innerHTML = `<tr><td colspan="5">${prompt} to compare shops.</td></tr>`;
+  }
+  if (els.dayCompareStatus && els.dayCompareBody) {
+    els.dayCompareStatus.textContent = prompt;
+    els.dayCompareBody.innerHTML = `<div class="empty">${prompt} to compare sales by date.</div>`;
+  }
   els.topItemsCount.textContent = prompt;
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
   els.rankGapCount.textContent = prompt;
@@ -1720,6 +1728,7 @@ function totalsFor(rows) {
 }
 
 function renderShopComparison(rows) {
+  if (!els.shopCompareCount || !els.shopCompareBody) return;
   const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
   const shops = new Map();
 
@@ -1778,6 +1787,7 @@ function changeLabel(current, comparison) {
 }
 
 function renderDayComparison(currentRows, compareRows, date, compareDate) {
+  if (!els.dayCompareStatus || !els.dayCompareBody) return;
   if (!compareDate || !state.availableDates.has(compareDate)) {
     els.dayCompareStatus.textContent = "Choose another day";
     els.dayCompareBody.innerHTML = `<div class="empty">Choose another day to compare against ${date}.</div>`;
@@ -2006,18 +2016,24 @@ els.dateCalendarGrid.addEventListener("click", (event) => {
   stageCalendarDate(button.dataset.date);
 });
 
-els.compareYearSelect.addEventListener("input", () => {
-  refreshCompareMonthOptions(false);
-  refreshCompareDayOptions(false);
-  update();
-});
+if (els.compareYearSelect) {
+  els.compareYearSelect.addEventListener("input", () => {
+    refreshCompareMonthOptions(false);
+    refreshCompareDayOptions(false);
+    update();
+  });
+}
 
-els.compareMonthSelect.addEventListener("input", () => {
-  refreshCompareDayOptions(false);
-  update();
-});
+if (els.compareMonthSelect) {
+  els.compareMonthSelect.addEventListener("input", () => {
+    refreshCompareDayOptions(false);
+    update();
+  });
+}
 
-els.compareDaySelect.addEventListener("input", () => update());
+if (els.compareDaySelect) {
+  els.compareDaySelect.addEventListener("input", () => update());
+}
 
 els.resetButton.addEventListener("click", () => {
   resetFilters();
