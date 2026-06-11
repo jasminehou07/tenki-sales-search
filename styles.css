@@ -143,6 +143,11 @@ main {
   color: var(--violet);
 }
 
+.reset-pill {
+  min-width: 86px;
+  justify-content: center;
+}
+
 .date-popover {
   position: absolute;
   left: 0;
@@ -1125,6 +1130,7 @@ thead th {
   .date-mode-label,
   .date-mode-select,
   .date-range-pill,
+  .reset-pill,
   .granularity-label,
   .granularity-select {
     width: 100%;

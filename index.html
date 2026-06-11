@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260611-rank-curve-shape">
+  <link rel="stylesheet" href="styles.css?v=20260611-reset-date-row">
 </head>
 <body>
   <header class="app-header">
@@ -78,6 +78,7 @@
             </div>
           </div>
         </div>
+        <button id="resetButton" class="date-pill reset-pill" type="button" disabled>Reset</button>
         <input id="granularitySelect" type="hidden" value="daily">
       </div>
       <div class="date-filter-grid legacy-date-controls" aria-hidden="true">
@@ -118,7 +119,6 @@
           </select>
         </label>
       </div>
-      <button id="resetButton" type="button" disabled>Reset</button>
     </section>
 
     <section class="metrics" aria-label="Search result totals">
@@ -230,6 +230,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260611-rank-curve-shape"></script>
+  <script src="app.js?v=20260611-reset-date-row"></script>
 </body>
 </html>
