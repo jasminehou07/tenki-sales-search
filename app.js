@@ -8,8 +8,8 @@ const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260611-gbt-rakuten-rank";
-const SHOP_PROJECTION_VERSION = "20260611-page-view-interval";
-const ALL_TIME_DATA_VERSION = "20260611-page-view-interval";
+const SHOP_PROJECTION_VERSION = "20260611-sales-units-page-view-estimates";
+const ALL_TIME_DATA_VERSION = "20260611-sales-units-page-view-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -58,7 +58,9 @@ const els = {
   compareMonthSelect: document.getElementById("compareMonthSelect"),
   compareDaySelect: document.getElementById("compareDaySelect"),
   resetButton: document.getElementById("resetButton"),
+  salesMetricLabel: document.getElementById("salesMetricLabel"),
   salesMetric: document.getElementById("salesMetric"),
+  unitsMetricLabel: document.getElementById("unitsMetricLabel"),
   unitsMetric: document.getElementById("unitsMetric"),
   pageViewsMetricLabel: document.getElementById("pageViewsMetricLabel"),
   pageViewsMetric: document.getElementById("pageViewsMetric"),
@@ -521,6 +523,7 @@ function estimateFromCsv(row) {
     shop: row.shop || "",
     genre: row.genre_id || row.genre,
     predictedSales: Number(row.predicted_sales) || 0,
+    predictedUnits: Number(row.predicted_units) || 0,
     predictedPageViews: Number(row.predicted_page_views) || 0,
     predictedPageViewsLow: Number(row.predicted_page_views_low) || 0,
     predictedPageViewsHigh: Number(row.predicted_page_views_high) || 0
@@ -1115,7 +1118,9 @@ function shopProjectionRowsForChart(rows, dates, filters) {
 }
 
 function renderEmptyState() {
+  els.salesMetricLabel.textContent = "Total sales";
   els.salesMetric.textContent = "-";
+  els.unitsMetricLabel.textContent = "Units sold";
   els.unitsMetric.textContent = "-";
   els.pageViewsMetricLabel.textContent = "Page views";
   els.pageViewsMetric.textContent = "-";
@@ -1217,13 +1222,20 @@ function renderSummary(rows, estimateRows = []) {
     acc.pageViews += row.pageViews;
     return acc;
   }, { sales: 0, units: 0, pageViews: 0 });
+  const estimatedSales = estimateRows.reduce((sum, row) => sum + row.predictedSales, 0);
+  const estimatedUnits = estimateRows.reduce((sum, row) => sum + row.predictedUnits, 0);
   const estimatedPageViews = estimateRows.reduce((sum, row) => sum + row.predictedPageViews, 0);
   const estimatedPageViewsLow = estimateRows.reduce((sum, row) => sum + row.predictedPageViewsLow, 0);
   const estimatedPageViewsHigh = estimateRows.reduce((sum, row) => sum + row.predictedPageViewsHigh, 0);
-  const useEstimatedPageViews = totals.pageViews === 0 && estimatedPageViews > 0;
+  const hasEstimateRows = estimateRows.length > 0;
+  const useEstimatedSales = hasEstimateRows && estimatedSales > 0;
+  const useEstimatedUnits = hasEstimateRows && estimatedUnits > 0;
+  const useEstimatedPageViews = hasEstimateRows && estimatedPageViews > 0;
 
-  els.salesMetric.textContent = yen.format(totals.sales);
-  els.unitsMetric.textContent = whole.format(totals.units);
+  els.salesMetricLabel.textContent = useEstimatedSales ? "Total sales (est.)" : "Total sales";
+  els.salesMetric.textContent = yen.format(useEstimatedSales ? estimatedSales : totals.sales);
+  els.unitsMetricLabel.textContent = useEstimatedUnits ? "Units sold (est.)" : "Units sold";
+  els.unitsMetric.textContent = whole.format(useEstimatedUnits ? estimatedUnits : totals.units);
   els.pageViewsMetricLabel.textContent = useEstimatedPageViews ? "Page views (est.)" : "Page views";
   els.pageViewsMetric.textContent = whole.format(useEstimatedPageViews ? estimatedPageViews : totals.pageViews);
   els.pageViewsMetricRange.textContent = useEstimatedPageViews

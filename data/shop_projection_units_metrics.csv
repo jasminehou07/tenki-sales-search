@@ -1,0 +1,2 @@
+rows,actual_sales,predicted_sales,wape,median_ape,within_25pct,validation_start,validation_end,genre_count,tuned_genre_count,target
+377068.0,1079019.0,1079043.4861101771,0.7361556178027095,0.5697091611964503,0.2137205712080278,2025-06-01,2025-12-02,100,100,units
