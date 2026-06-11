@@ -7,9 +7,9 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-gbt-rakuten-rank";
-const SHOP_PROJECTION_VERSION = "20260611-estimate-interval-cards";
-const ALL_TIME_DATA_VERSION = "20260611-estimate-interval-cards";
+const RANK_DATA_VERSION = "20260611-tuned-rank-intervals";
+const SHOP_PROJECTION_VERSION = "20260611-tuned-rank-intervals";
+const ALL_TIME_DATA_VERSION = "20260611-tuned-rank-intervals";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
