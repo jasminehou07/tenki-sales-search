@@ -7,7 +7,7 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-date-mode-picker";
+const RANK_DATA_VERSION = "20260611-hide-single-day-trend";
 const SHOP_PROJECTION_VERSION = "20260611-full-tenki-daily-estimates";
 const ALL_TIME_DATA_VERSION = "20260611-full-tenki-daily-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -68,6 +68,7 @@ const els = {
   pageViewsMetricLabel: document.getElementById("pageViewsMetricLabel"),
   pageViewsMetric: document.getElementById("pageViewsMetric"),
   pageViewsMetricInterval: document.getElementById("pageViewsMetricInterval"),
+  trendPanel: document.getElementById("trendPanel"),
   trendChart: document.getElementById("trendChart"),
   trendSubtitle: document.getElementById("trendSubtitle"),
   shopProjectionChart: document.getElementById("shopProjectionChart"),
@@ -640,6 +641,11 @@ function selectedPeriodDates() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+function syncTrendPanelVisibility() {
+  if (!els.trendPanel) return;
+  els.trendPanel.hidden = !isRangeMode();
+}
+
 function datesEndingOn(endDate, count) {
   if (!endDate || !state.availableDates.has(endDate)) return [];
   return state.dates
@@ -1050,6 +1056,7 @@ async function update() {
   const periodDates = selectedPeriodDates();
   const currentLabel = periodLabel(periodDates);
   const compareDate = selectedCompareDate();
+  syncTrendPanelVisibility();
 
   if (!periodDates.length) {
     renderEmptyState();
@@ -1101,7 +1108,9 @@ async function update() {
     : [];
 
   renderSummary(baseRows, summaryEstimateRows, rankGapRows, periodDates, genre);
-  renderTrendChart(trendRows, chartDates, currentLabel);
+  if (isRangeMode()) {
+    renderTrendChart(trendRows, chartDates, currentLabel);
+  }
   renderShopProjectionChart(shopProjectionRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
