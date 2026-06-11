@@ -1,2 +1,2 @@
-holdout_rate,train_rows,test_rows,event_factor_rows,wmape,median_ape,within_25_percent
-0.05,92650,5018,955,0.446161,0.370231,0.362296
+rows,actual_sales,predicted_sales,wmape,median_ape,mean_ape,within_25_percent,within_50_percent,median_absolute_error,model,holdout_rate,train_rows,test_rows,training_source
+4823,505283835.0,412305496.2,0.389879,0.273996,0.416835,0.462575,0.762389,12940.41,sklearn_hist_gradient_boosted_trees,0.05,92845,4823,TENKi known rank-sales rows only

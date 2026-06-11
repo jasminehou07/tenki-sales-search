@@ -1,13 +1,13 @@
 const OPTIONS_URL = "data/filter_options.csv";
 const EVENTS_URL = "data/events.csv";
-const RANK_CURVES_URL = "data/rank_curves.csv?v=20260610-rank-event-factors";
-const RANK_EVENT_FACTORS_URL = "data/rank_event_factors.csv?v=20260610-rank-event-factors";
+const RANK_CURVES_URL = "data/rank_curves.csv?v=20260611-gbt-rakuten-rank";
+const RANK_EVENT_FACTORS_URL = "data/rank_event_factors.csv?v=20260611-gbt-rakuten-rank";
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260610-rank-event-factors";
+const RANK_DATA_VERSION = "20260611-gbt-rakuten-rank";
 const SHOP_PROJECTION_VERSION = "20260611-genre-lag-shop-projection";
 const ALL_TIME_DATA_VERSION = "20260611-genre-lag-shop-projection";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -1447,8 +1447,8 @@ function renderRankGapEstimates(rows, dates) {
     return;
   }
   if (GENRES_WITHOUT_RANK_DATA.has(genre)) {
-    els.rankGapCount.textContent = "No rank file";
-    els.rankGapBody.innerHTML = `<tr><td colspan="4">The local TENKi files do not include a ranking file for ${genreLabel(genre)}.</td></tr>`;
+    els.rankGapCount.textContent = "No model file";
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank model output is available for ${genreLabel(genre)}.</td></tr>`;
     return;
   }
 
@@ -1469,113 +1469,25 @@ function renderRankGapEstimates(rows, dates) {
     return;
   }
 
-  const fallbackByRank = new Map();
-  rows
-    .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20 && row.salesKnown)
-    .forEach((row) => {
-      const values = fallbackByRank.get(row.rank) || [];
-      values.push(row.sales);
-      fallbackByRank.set(row.rank, values);
-    });
-  fallbackByRank.forEach((values, rank) => {
-    values.sort((a, b) => a - b);
-    fallbackByRank.set(rank, values[Math.floor(values.length / 2)]);
-  });
   const curveByRank = state.rankCurves.get(genre) || new Map();
-  const genreEventFactors = state.rankEventFactors.get(genre) || new Map();
-  const activeRankEventNames = state.events
-    .filter((event) => event.start_date <= rankDate && event.end_date >= rankDate)
-    .map((event) => event.name);
-  const rankEventMultiplier = activeRankEventNames.reduce((best, eventName) => {
-    const factor = genreEventFactors.get(eventName) || state.globalRankEventFactors.get(eventName) || 1;
-    return Math.max(best, Number.isFinite(factor) ? factor : 1);
-  }, 1);
-  const applyRankEventMultiplier = (sales) => sales * rankEventMultiplier;
 
   const estimateForRank = (rank) => {
     const rankRows = filtered.filter((row) => row.rank === rank);
-    const actualWithSales = rankRows.find((row) => row.source === "actual" && row.salesKnown);
-    if (actualWithSales) return { sales: actualWithSales.sales, source: "actual" };
-
     const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
-    if (sameDayEstimate) return { sales: sameDayEstimate.sales, source: "estimated" };
+    if (sameDayEstimate) return sameDayEstimate.sales;
 
     const curveSales = curveByRank.get(rank);
-    if (Number.isFinite(curveSales)) return { sales: applyRankEventMultiplier(curveSales), source: "estimated" };
-
-    const fallbackSales = fallbackByRank.get(rank);
-    if (Number.isFinite(fallbackSales)) return { sales: applyRankEventMultiplier(fallbackSales), source: "estimated" };
-
-    return { sales: 0, source: "missing" };
+    if (Number.isFinite(curveSales)) return curveSales;
+    return 0;
   };
-
-  const estimateMissingRank = (rank) => {
-    const rankRows = filtered.filter((row) => row.rank === rank);
-    const actualAnchor = rankRows.find((row) => row.source === "actual" && row.salesKnown);
-    if (actualAnchor) return { sales: actualAnchor.sales, source: "estimated" };
-
-    const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
-    if (sameDayEstimate) return { sales: sameDayEstimate.sales, source: "estimated" };
-
-    const curveSales = curveByRank.get(rank);
-    if (Number.isFinite(curveSales)) return { sales: applyRankEventMultiplier(curveSales), source: "estimated" };
-
-    const fallbackSales = fallbackByRank.get(rank);
-    if (Number.isFinite(fallbackSales)) return { sales: applyRankEventMultiplier(fallbackSales), source: "estimated" };
-
-    return { sales: 0, source: "missing" };
-  };
-
-  const estimateForShopRank = (shopId, rank) => {
-    const actualShopSales = filtered.find((row) =>
-      row.rank === rank &&
-      row.shop === shopId &&
-      row.source === "actual" &&
-      row.salesKnown
-    );
-    if (actualShopSales) return { sales: actualShopSales.sales, source: "actual" };
-    return estimateMissingRank(rank);
-  };
-
-  const actualShopRanks = new Map();
-  filtered.forEach((row) => {
-    if (row.source !== "actual" || !row.shop) return;
-    const ranks = actualShopRanks.get(row.shop) || [];
-    ranks.push(row.rank);
-    actualShopRanks.set(row.shop, ranks);
-  });
-
-  const primaryShopsByRank = new Map();
-  actualShopRanks.forEach((ranks, shopId) => {
-    const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
-    const primaryRank = uniqueRanks[0];
-    const shops = primaryShopsByRank.get(primaryRank) || [];
-    const rankEstimate = estimateForShopRank(shopId, primaryRank);
-    shops.push({
-      shopId,
-      sales: rankEstimate.sales,
-      source: rankEstimate.source
-    });
-    primaryShopsByRank.set(primaryRank, shops);
-  });
-  primaryShopsByRank.forEach((shops) => {
-    shops.sort((a, b) => b.sales - a.sales || a.shopId.localeCompare(b.shopId));
-  });
 
   const topRows = Array.from({ length: 20 }, (_, index) => {
     const rank = index + 1;
-    const shops = primaryShopsByRank.get(rank) || [];
-    const estimate = estimateMissingRank(rank);
-
     return {
       rank,
-      label: shops.length
-        ? shops.map((shop) => `Shop ${shop.shopId}`).join(", ")
-        : `Estimated shop (rank #${whole.format(rank)})`,
-      sales: shops.length
-        ? shops.reduce((total, shop) => total + shop.sales, 0)
-        : estimate.sales,
-      source: shops.length && shops.every((shop) => shop.source === "actual") ? "actual" : "estimated"
+      label: `Rakuten rank #${whole.format(rank)}`,
+      sales: estimateForRank(rank),
+      source: "estimated"
     };
   });
 
@@ -1585,17 +1497,14 @@ function renderRankGapEstimates(rows, dates) {
     }
   }
 
-  els.rankGapCount.textContent = `Rank estimates for ${rankDate}`;
+  els.rankGapCount.textContent = `Rakuten model estimates for ${rankDate}`;
   els.rankGapBody.innerHTML = topRows.map((row, index) => {
-    const source = row.source === "actual"
-      ? `<span class="source-pill actual">TENKi actual</span>`
-      : `<span class="source-pill estimated">Estimated</span>`;
     return `
-      <tr class="${row.source === "estimated" ? "estimated-rank-row" : "actual-rank-row"}">
+      <tr class="estimated-rank-row">
         <td>#${whole.format(row.rank || index + 1)}</td>
         <td>${row.label}</td>
         <td>${yen.format(row.sales)}</td>
-        <td>${source}</td>
+        <td><span class="source-pill estimated">Model estimate</span></td>
       </tr>
     `;
   }).join("");
