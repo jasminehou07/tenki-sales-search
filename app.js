@@ -7,7 +7,7 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-estimate-trend-band";
+const RANK_DATA_VERSION = "20260611-zoomed-sales-trend";
 const SHOP_PROJECTION_VERSION = "20260611-full-tenki-daily-estimates";
 const ALL_TIME_DATA_VERSION = "20260611-full-tenki-daily-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -1383,8 +1383,12 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
   const buckets = aggregateEstimateTrendRows(rows, dates, granularity);
   const values = buckets.map((bucket) => bucket.sales);
-  const highValues = buckets.map((bucket) => bucket.salesHigh || bucket.sales);
-  const max = Math.max(...highValues, ...values, 1);
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values, 1);
+  const rawRange = Math.max(rawMax - rawMin, rawMax * 0.08, 1);
+  const min = Math.max(0, rawMin - (rawRange * 0.22));
+  const max = rawMax + (rawRange * 0.22);
+  const scaleRange = Math.max(max - min, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -1392,9 +1396,13 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   const padBottom = 44;
   const plotWidth = width - (padX * 2);
   const plotHeight = height - padTop - padBottom;
+  const yForValue = (value) => {
+    const boundedValue = Math.min(max, Math.max(min, value));
+    return padTop + plotHeight - (((boundedValue - min) / scaleRange) * plotHeight);
+  };
   const points = values.map((value, index) => {
     const x = buckets.length === 1 ? width / 2 : padX + (plotWidth * index) / (buckets.length - 1);
-    const y = padTop + plotHeight - ((value / max) * plotHeight);
+    const y = yForValue(value);
     return {
       x,
       y,
@@ -1408,11 +1416,11 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   });
   const highPoints = points.map((point) => ({
     x: point.x,
-    y: padTop + plotHeight - (((point.high || point.value) / max) * plotHeight)
+    y: yForValue(point.high || point.value)
   }));
   const lowPoints = points.map((point) => ({
     x: point.x,
-    y: padTop + plotHeight - (((point.low || point.value) / max) * plotHeight)
+    y: yForValue(point.low || point.value)
   }));
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
   const intervalArea = [
@@ -1420,7 +1428,7 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
     ...lowPoints.slice().reverse().map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
   ].join(" ");
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
-    value: max * ratio,
+    value: min + (scaleRange * ratio),
     y: padTop + plotHeight - (plotHeight * ratio)
   }));
   const ticks = points.filter((_, index) => (
