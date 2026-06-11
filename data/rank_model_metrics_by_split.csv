@@ -1,6 +1,6 @@
 rows,actual_sales,predicted_sales,wmape,median_ape,mean_ape,within_25_percent,within_50_percent,median_absolute_error,split,seed,model,holdout_rate,train_rows,test_rows,training_source
-4823,505283835.0,461138159.32,0.287674,0.208412,0.323325,0.575575,0.856936,9910.64,1,20260611,sklearn_hist_gradient_boosted_trees,0.05,92845,4823,TENKi known rank-sales rows only
-4903,507507882.0,462558716.46,0.297129,0.218181,0.336678,0.55619,0.847644,10638.94,2,20268530,sklearn_hist_gradient_boosted_trees,0.05,92765,4903,TENKi known rank-sales rows only
-4915,530073501.0,465750166.65,0.305103,0.214963,0.319545,0.565209,0.848423,10243.51,3,20276449,sklearn_hist_gradient_boosted_trees,0.05,92753,4915,TENKi known rank-sales rows only
-4814,509244910.0,451343512.93,0.298862,0.207496,0.300787,0.572912,0.857707,9981.58,4,20284368,sklearn_hist_gradient_boosted_trees,0.05,92854,4814,TENKi known rank-sales rows only
-4924,518575820.0,464164499.82,0.29467,0.213493,0.306196,0.566003,0.851137,10330.13,5,20292287,sklearn_hist_gradient_boosted_trees,0.05,92744,4924,TENKi known rank-sales rows only
+4823,505283835.0,461138159.32,0.287545,0.208431,0.322831,0.576197,0.856728,9864.99,1,20260611,sklearn_hist_gradient_boosted_trees,0.05,92845,4823,TENKi known rank-sales rows only
+4903,507507882.0,462558716.46,0.29578,0.216156,0.336372,0.559657,0.847848,10629.53,2,20268530,sklearn_hist_gradient_boosted_trees,0.05,92765,4903,TENKi known rank-sales rows only
+4915,530073501.0,465750166.65,0.304021,0.212343,0.318333,0.569074,0.84883,10107.19,3,20276449,sklearn_hist_gradient_boosted_trees,0.05,92753,4915,TENKi known rank-sales rows only
+4814,509244910.0,451343512.93,0.298762,0.206405,0.299645,0.573536,0.857707,9930.3,4,20284368,sklearn_hist_gradient_boosted_trees,0.05,92854,4814,TENKi known rank-sales rows only
+4924,518575820.0,464164499.82,0.295286,0.2133,0.306149,0.568846,0.852356,10345.89,5,20292287,sklearn_hist_gradient_boosted_trees,0.05,92744,4924,TENKi known rank-sales rows only
