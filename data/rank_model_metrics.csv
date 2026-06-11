@@ -1,2 +1,2 @@
-rows,actual_sales,predicted_sales,wmape,median_ape,mean_ape,within_25_percent,within_50_percent,median_absolute_error,model,holdout_rate,train_rows,test_rows,training_source
-4823,505283835.0,461138159.32,0.287117,0.207002,0.320703,0.577234,0.859631,9895.67,sklearn_hist_gradient_boosted_trees,0.05,92845,4823,TENKi known rank-sales rows only
+rows,actual_sales,predicted_sales,wmape,median_ape,mean_ape,within_25_percent,within_50_percent,median_absolute_error,model,holdout_rate,validation_runs,hidden_rows,training_source
+24379,2570685948.0,2304955055.19,0.295003,0.210938,0.313706,0.570368,0.854752,10125.7,sklearn_hist_gradient_boosted_trees,0.05,5,24379,TENKi known rank-sales rows only
