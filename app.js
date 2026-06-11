@@ -7,7 +7,7 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-repeated-holdout-rank";
+const RANK_DATA_VERSION = "20260611-date-mode-picker";
 const SHOP_PROJECTION_VERSION = "20260611-full-tenki-daily-estimates";
 const ALL_TIME_DATA_VERSION = "20260611-full-tenki-daily-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -47,6 +47,7 @@ const els = {
   startDateInput: document.getElementById("startDateInput"),
   endDateInput: document.getElementById("endDateInput"),
   dateRangeButton: document.getElementById("dateRangeButton"),
+  dateRangeCaption: document.getElementById("dateRangeCaption"),
   dateRangeLabel: document.getElementById("dateRangeLabel"),
   datePopover: document.getElementById("datePopover"),
   datePresetButtons: document.querySelectorAll(".date-preset-button"),
@@ -611,9 +612,16 @@ function genreLabel(id) {
 function syncRangeControls() {
   document.body.classList.toggle("range-mode", isRangeMode());
   const isRange = isRangeMode();
+  if (els.dateRangeCaption) {
+    els.dateRangeCaption.textContent = isRange ? "Date range" : "Date";
+  }
   const startLabel = els.startDateInput.closest("label");
   if (startLabel) {
-    startLabel.firstChild.nodeValue = isRange ? "Start date" : "Calendar date";
+    startLabel.firstChild.nodeValue = isRange ? "Start" : "Date";
+  }
+  if (!isRange) {
+    setEndDateParts("");
+    clearActivePreset();
   }
 }
 
@@ -732,9 +740,14 @@ function stageCalendarDate(date) {
   const end = selectedEndDate();
   clearActivePreset();
 
+  if (!isRangeMode()) {
+    setDateParts(date);
+    setEndDateParts("");
+    syncDateRangeLabel();
+    return;
+  }
+
   if (!start || end) {
-    els.dateModeSelect.value = "day";
-    syncRangeControls();
     setDateParts(date);
     setEndDateParts("");
     syncDateRangeLabel();
@@ -746,9 +759,6 @@ function stageCalendarDate(date) {
     syncDateRangeLabel();
     return;
   }
-
-  els.dateModeSelect.value = "range";
-  syncRangeControls();
   if (date < start) {
     setDateParts(date);
     setEndDateParts(start);
@@ -1875,6 +1885,9 @@ async function init() {
 });
 
 els.dateModeSelect.addEventListener("input", () => {
+  if (isRangeMode() && !selectedEndDate()) {
+    setEndDateParts(selectedDate());
+  }
   syncRangeControls();
   syncDateRangeLabel();
   update();
@@ -1943,10 +1956,7 @@ els.startDateInput.addEventListener("input", () => {
 els.endDateInput.addEventListener("input", () => {
   const date = nearestAvailableDate(els.endDateInput.value);
   if (!date) return;
-  if (!isRangeMode()) {
-    els.dateModeSelect.value = "range";
-    syncRangeControls();
-  }
+  if (!isRangeMode()) return;
   setEndDateParts(date);
   clearActivePreset();
   syncDateRangeLabel();
@@ -1971,7 +1981,9 @@ els.clearDateButton.addEventListener("click", () => {
 
 els.applyDateButton.addEventListener("click", () => {
   const start = nearestAvailableDate(els.startDateInput.value);
-  const end = nearestAvailableDate(els.endDateInput.value || els.startDateInput.value);
+  const end = isRangeMode()
+    ? nearestAvailableDate(els.endDateInput.value || els.startDateInput.value)
+    : start;
   const dates = datesBetween(start, end);
   clearActivePreset();
   applyPeriodDates(dates);

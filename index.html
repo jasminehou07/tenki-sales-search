@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260611-repeated-holdout-rank">
+  <link rel="stylesheet" href="styles.css?v=20260611-date-mode-picker">
 </head>
 <body>
   <header class="app-header">
@@ -35,9 +35,16 @@
         </select>
       </label>
       <div class="date-pill-row">
+        <label class="date-mode-label">
+          <span class="sr-only">Search type</span>
+          <select id="dateModeSelect" class="date-pill date-mode-select" disabled>
+            <option value="day">One day</option>
+            <option value="range">Date range</option>
+          </select>
+        </label>
         <div class="date-picker-shell">
           <button id="dateRangeButton" class="date-pill date-range-pill" type="button" disabled aria-expanded="false">
-            <span>Date range</span>
+            <span id="dateRangeCaption">Date range</span>
             <strong id="dateRangeLabel">Latest day</strong>
             <span class="chevron">v</span>
           </button>
@@ -58,7 +65,7 @@
                   Start
                   <input id="startDateInput" type="date" disabled>
                 </label>
-                <label>
+                <label class="end-date-field">
                   End
                   <input id="endDateInput" type="date" disabled>
                 </label>
@@ -77,15 +84,6 @@
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
-          </select>
-        </label>
-      </div>
-      <div class="legacy-date-controls" aria-hidden="true">
-        <label>
-          Search type
-          <select id="dateModeSelect" disabled tabindex="-1">
-            <option value="day">Single day</option>
-            <option value="range">Date range</option>
           </select>
         </label>
       </div>
@@ -287,6 +285,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260611-repeated-holdout-rank"></script>
+  <script src="app.js?v=20260611-date-mode-picker"></script>
 </body>
 </html>
