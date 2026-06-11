@@ -8,8 +8,8 @@ const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260611-gbt-rakuten-rank";
-const SHOP_PROJECTION_VERSION = "20260611-sales-units-page-view-estimates";
-const ALL_TIME_DATA_VERSION = "20260611-sales-units-page-view-estimates";
+const SHOP_PROJECTION_VERSION = "20260611-estimate-interval-cards";
+const ALL_TIME_DATA_VERSION = "20260611-estimate-interval-cards";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -60,11 +60,13 @@ const els = {
   resetButton: document.getElementById("resetButton"),
   salesMetricLabel: document.getElementById("salesMetricLabel"),
   salesMetric: document.getElementById("salesMetric"),
+  salesMetricInterval: document.getElementById("salesMetricInterval"),
   unitsMetricLabel: document.getElementById("unitsMetricLabel"),
   unitsMetric: document.getElementById("unitsMetric"),
+  unitsMetricInterval: document.getElementById("unitsMetricInterval"),
   pageViewsMetricLabel: document.getElementById("pageViewsMetricLabel"),
   pageViewsMetric: document.getElementById("pageViewsMetric"),
-  pageViewsMetricRange: document.getElementById("pageViewsMetricRange"),
+  pageViewsMetricInterval: document.getElementById("pageViewsMetricInterval"),
   trendChart: document.getElementById("trendChart"),
   trendSubtitle: document.getElementById("trendSubtitle"),
   shopProjectionChart: document.getElementById("shopProjectionChart"),
@@ -84,7 +86,7 @@ const els = {
 };
 
 const yen = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
-const whole = new Intl.NumberFormat("en-US");
+const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const shopProjectionColors = ["#0f766e", "#2563eb", "#db2777", "#f97316", "#7c3aed", "#16a34a", "#dc2626", "#0891b2"];
 
 function parseCsv(text) {
@@ -523,7 +525,11 @@ function estimateFromCsv(row) {
     shop: row.shop || "",
     genre: row.genre_id || row.genre,
     predictedSales: Number(row.predicted_sales) || 0,
+    predictedSalesLow: Number(row.predicted_sales_low) || 0,
+    predictedSalesHigh: Number(row.predicted_sales_high) || 0,
     predictedUnits: Number(row.predicted_units) || 0,
+    predictedUnitsLow: Number(row.predicted_units_low) || 0,
+    predictedUnitsHigh: Number(row.predicted_units_high) || 0,
     predictedPageViews: Number(row.predicted_page_views) || 0,
     predictedPageViewsLow: Number(row.predicted_page_views_low) || 0,
     predictedPageViewsHigh: Number(row.predicted_page_views_high) || 0
@@ -539,6 +545,8 @@ function rankGapFromCsv(row) {
     source: row.source || "estimated",
     sales: row.sales === "" ? null : Number(row.sales) || 0,
     salesKnown: row.sales !== "",
+    salesLow: row.sales_low === "" ? null : Number(row.sales_low) || 0,
+    salesHigh: row.sales_high === "" ? null : Number(row.sales_high) || 0,
     lowerRank: Number(row.lower_rank) || 0,
     upperRank: Number(row.upper_rank) || 0,
     lowerSales: Number(row.lower_sales) || 0,
@@ -1051,7 +1059,7 @@ async function update() {
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
       : [];
 
-    renderSummary(baseRows, summaryEstimateRows);
+    renderSummary(baseRows, summaryEstimateRows, allTimeData.rankRows, periodDates, genre);
     renderTrendChart(trendRows, monthlyDates, currentLabel, "monthly");
     renderShopProjectionChart(shopProjectionRows, monthlyDates, currentLabel, "monthly");
     renderShopComparison(baseRows);
@@ -1081,7 +1089,7 @@ async function update() {
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
-  renderSummary(baseRows, summaryEstimateRows);
+  renderSummary(baseRows, summaryEstimateRows, rankGapRows, periodDates, genre);
   renderTrendChart(trendRows, chartDates, currentLabel);
   renderShopProjectionChart(shopProjectionRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
@@ -1120,11 +1128,13 @@ function shopProjectionRowsForChart(rows, dates, filters) {
 function renderEmptyState() {
   els.salesMetricLabel.textContent = "Total sales";
   els.salesMetric.textContent = "-";
+  els.salesMetricInterval.innerHTML = "";
   els.unitsMetricLabel.textContent = "Units sold";
   els.unitsMetric.textContent = "-";
+  els.unitsMetricInterval.innerHTML = "";
   els.pageViewsMetricLabel.textContent = "Page views";
   els.pageViewsMetric.textContent = "-";
-  els.pageViewsMetricRange.textContent = "";
+  els.pageViewsMetricInterval.innerHTML = "";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
   els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
@@ -1139,6 +1149,14 @@ function renderEmptyState() {
   els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
   els.rankGapCount.textContent = prompt;
   els.rankGapBody.innerHTML = `<tr><td colspan="4">${prompt} to see rank 1-20 estimates.</td></tr>`;
+}
+
+function metricIntervalHtml(low, exact, high, formatter) {
+  return `
+    <span><em>Low</em><strong>${formatter.format(low)}</strong></span>
+    <span><em>Exact</em><strong>${formatter.format(exact)}</strong></span>
+    <span><em>High</em><strong>${formatter.format(high)}</strong></span>
+  `;
 }
 
 function monthsForDates(dates) {
@@ -1215,7 +1233,30 @@ async function loadAllTimeData() {
   return state.allTimeData;
 }
 
-function renderSummary(rows, estimateRows = []) {
+function rankSummaryForMetric(rankRows, dates, genre) {
+  if (genre === "all" || !dates.length) return null;
+  const availableRankDates = new Set(rankRows
+    .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20 && row.salesKnown)
+    .map((row) => row.date));
+  const rankDate = [...dates].reverse().find((date) => availableRankDates.has(date));
+  if (!rankDate) return null;
+  const rows = rankRows.filter((row) =>
+    row.date === rankDate &&
+    row.genre === genre &&
+    row.rank >= 1 &&
+    row.rank <= 20 &&
+    row.salesKnown
+  );
+  if (!rows.length) return null;
+  return rows.reduce((acc, row) => {
+    acc.sales += row.sales;
+    acc.salesLow += Number.isFinite(row.salesLow) ? row.salesLow : row.sales;
+    acc.salesHigh += Number.isFinite(row.salesHigh) ? row.salesHigh : row.sales;
+    return acc;
+  }, { sales: 0, salesLow: 0, salesHigh: 0 });
+}
+
+function renderSummary(rows, estimateRows = [], rankRows = [], dates = [], genre = "all") {
   const totals = rows.reduce((acc, row) => {
     acc.sales += row.sales;
     acc.units += row.units;
@@ -1223,23 +1264,44 @@ function renderSummary(rows, estimateRows = []) {
     return acc;
   }, { sales: 0, units: 0, pageViews: 0 });
   const estimatedSales = estimateRows.reduce((sum, row) => sum + row.predictedSales, 0);
+  const estimatedSalesLow = estimateRows.reduce((sum, row) => sum + row.predictedSalesLow, 0);
+  const estimatedSalesHigh = estimateRows.reduce((sum, row) => sum + row.predictedSalesHigh, 0);
   const estimatedUnits = estimateRows.reduce((sum, row) => sum + row.predictedUnits, 0);
+  const estimatedUnitsLow = estimateRows.reduce((sum, row) => sum + row.predictedUnitsLow, 0);
+  const estimatedUnitsHigh = estimateRows.reduce((sum, row) => sum + row.predictedUnitsHigh, 0);
   const estimatedPageViews = estimateRows.reduce((sum, row) => sum + row.predictedPageViews, 0);
   const estimatedPageViewsLow = estimateRows.reduce((sum, row) => sum + row.predictedPageViewsLow, 0);
   const estimatedPageViewsHigh = estimateRows.reduce((sum, row) => sum + row.predictedPageViewsHigh, 0);
   const hasEstimateRows = estimateRows.length > 0;
-  const useEstimatedSales = hasEstimateRows && estimatedSales > 0;
-  const useEstimatedUnits = hasEstimateRows && estimatedUnits > 0;
+  const rankSummary = rankSummaryForMetric(rankRows, dates, genre);
+  const estimatedAveragePrice = estimatedUnits > 0 ? estimatedSales / estimatedUnits : 0;
+  const rankEstimatedUnits = rankSummary && estimatedAveragePrice > 0 ? rankSummary.sales / estimatedAveragePrice : 0;
+  const rankEstimatedUnitsLow = rankSummary && estimatedAveragePrice > 0 ? rankSummary.salesLow / estimatedAveragePrice : 0;
+  const rankEstimatedUnitsHigh = rankSummary && estimatedAveragePrice > 0 ? rankSummary.salesHigh / estimatedAveragePrice : 0;
+  const useEstimatedSales = Boolean((rankSummary && rankSummary.sales > 0) || (hasEstimateRows && estimatedSales > 0));
+  const useEstimatedUnits = Boolean((rankEstimatedUnits > 0) || (hasEstimateRows && estimatedUnits > 0));
   const useEstimatedPageViews = hasEstimateRows && estimatedPageViews > 0;
+  const displaySales = rankSummary?.sales || estimatedSales;
+  const displaySalesLow = rankSummary?.salesLow || estimatedSalesLow;
+  const displaySalesHigh = rankSummary?.salesHigh || estimatedSalesHigh;
+  const displayUnits = rankEstimatedUnits || estimatedUnits;
+  const displayUnitsLow = rankEstimatedUnitsLow || estimatedUnitsLow;
+  const displayUnitsHigh = rankEstimatedUnitsHigh || estimatedUnitsHigh;
 
   els.salesMetricLabel.textContent = useEstimatedSales ? "Total sales (est.)" : "Total sales";
-  els.salesMetric.textContent = yen.format(useEstimatedSales ? estimatedSales : totals.sales);
+  els.salesMetric.textContent = yen.format(useEstimatedSales ? displaySales : totals.sales);
+  els.salesMetricInterval.innerHTML = useEstimatedSales
+    ? metricIntervalHtml(displaySalesLow, displaySales, displaySalesHigh, yen)
+    : "";
   els.unitsMetricLabel.textContent = useEstimatedUnits ? "Units sold (est.)" : "Units sold";
-  els.unitsMetric.textContent = whole.format(useEstimatedUnits ? estimatedUnits : totals.units);
+  els.unitsMetric.textContent = whole.format(useEstimatedUnits ? displayUnits : totals.units);
+  els.unitsMetricInterval.innerHTML = useEstimatedUnits
+    ? metricIntervalHtml(displayUnitsLow, displayUnits, displayUnitsHigh, whole)
+    : "";
   els.pageViewsMetricLabel.textContent = useEstimatedPageViews ? "Page views (est.)" : "Page views";
   els.pageViewsMetric.textContent = whole.format(useEstimatedPageViews ? estimatedPageViews : totals.pageViews);
-  els.pageViewsMetricRange.textContent = useEstimatedPageViews
-    ? `95% range: ${whole.format(estimatedPageViewsLow)} - ${whole.format(estimatedPageViewsHigh)}`
+  els.pageViewsMetricInterval.innerHTML = useEstimatedPageViews
+    ? metricIntervalHtml(estimatedPageViewsLow, estimatedPageViews, estimatedPageViewsHigh, whole)
     : "";
 }
 

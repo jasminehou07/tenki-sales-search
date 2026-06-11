@@ -694,11 +694,36 @@ input:disabled {
   line-height: 1.1;
 }
 
-.metric-range {
+.metric-interval {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 2px;
+}
+
+.metric-interval span {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  display: grid;
+  font-size: 11px;
+  gap: 2px;
+  line-height: 1.15;
+  min-width: 0;
+  padding: 7px 6px;
+}
+
+.metric-interval em {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.metric-interval strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .comparison-grid {

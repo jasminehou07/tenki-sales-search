@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260611-sales-units-page-view-estimates">
+  <link rel="stylesheet" href="styles.css?v=20260611-estimate-interval-cards">
 </head>
 <body>
   <header class="app-header">
@@ -134,15 +134,17 @@
       <article>
         <span id="salesMetricLabel">Total sales</span>
         <strong id="salesMetric">-</strong>
+        <div id="salesMetricInterval" class="metric-interval" aria-label="Total sales estimate interval"></div>
       </article>
       <article>
         <span id="unitsMetricLabel">Units sold</span>
         <strong id="unitsMetric">-</strong>
+        <div id="unitsMetricInterval" class="metric-interval" aria-label="Units sold estimate interval"></div>
       </article>
       <article>
         <span id="pageViewsMetricLabel">Page views</span>
         <strong id="pageViewsMetric">-</strong>
-        <small id="pageViewsMetricRange" class="metric-range"></small>
+        <div id="pageViewsMetricInterval" class="metric-interval" aria-label="Page views estimate interval"></div>
       </article>
     </section>
 
@@ -282,6 +284,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260611-sales-units-page-view-estimates"></script>
+  <script src="app.js?v=20260611-estimate-interval-cards"></script>
 </body>
 </html>
