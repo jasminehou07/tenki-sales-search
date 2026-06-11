@@ -7,7 +7,7 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-remove-comparisons";
+const RANK_DATA_VERSION = "20260611-slim-rank-chart";
 const SHOP_PROJECTION_VERSION = "20260611-full-tenki-daily-estimates";
 const ALL_TIME_DATA_VERSION = "20260611-full-tenki-daily-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -1575,8 +1575,9 @@ function renderRankGapChart(rows, rankDate) {
   const plotWidth = width - padLeft - padRight;
   const plotHeight = height - padTop - padBottom;
   const maxValue = Math.max(...rows.map((row) => Math.max(row.salesHigh || row.sales, row.sales || 0)), 1);
-  const barGap = 6;
-  const barWidth = Math.max(10, (plotWidth / rows.length) - barGap);
+  const rankSlot = plotWidth / rows.length;
+  const barWidth = Math.max(8, Math.min(16, rankSlot * 0.45));
+  const ciCapWidth = Math.max(5, Math.min(8, barWidth * 0.55));
   const scaleY = (value) => padTop + plotHeight - ((value / maxValue) * plotHeight);
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: maxValue * ratio,
@@ -1590,12 +1591,12 @@ function renderRankGapChart(rows, rankDate) {
         <text x="${padLeft - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
       `).join("")}
       ${rows.map((row, index) => {
-        const x = padLeft + (index * (plotWidth / rows.length)) + (barGap / 2);
+        const centerX = padLeft + (index * rankSlot) + (rankSlot / 2);
+        const x = centerX - (barWidth / 2);
         const y = scaleY(row.sales);
         const lowY = scaleY(row.salesLow || row.sales);
         const highY = scaleY(row.salesHigh || row.sales);
         const barHeight = Math.max(2, padTop + plotHeight - y);
-        const centerX = x + (barWidth / 2);
         const isActual = row.source === "actual";
         const tooltip = escapeHtml(`Rank #${row.rank}\n${isActual ? "Known value" : "Model estimate"}\nExact: ${yen.format(row.sales)}\n95% low: ${yen.format(row.salesLow || row.sales)}\n95% high: ${yen.format(row.salesHigh || row.sales)}`);
         return `
@@ -1604,16 +1605,16 @@ function renderRankGapChart(rows, rankDate) {
             y="${y.toFixed(1)}"
             width="${barWidth.toFixed(1)}"
             height="${barHeight.toFixed(1)}"
-            rx="3"
+            rx="4"
             class="rank-bar ${isActual ? "actual" : "estimated"}">
           </rect>
           <line x1="${centerX.toFixed(1)}" y1="${highY.toFixed(1)}" x2="${centerX.toFixed(1)}" y2="${lowY.toFixed(1)}" class="rank-ci-line"></line>
-          <line x1="${(centerX - 4).toFixed(1)}" y1="${highY.toFixed(1)}" x2="${(centerX + 4).toFixed(1)}" y2="${highY.toFixed(1)}" class="rank-ci-line"></line>
-          <line x1="${(centerX - 4).toFixed(1)}" y1="${lowY.toFixed(1)}" x2="${(centerX + 4).toFixed(1)}" y2="${lowY.toFixed(1)}" class="rank-ci-line"></line>
+          <line x1="${(centerX - ciCapWidth).toFixed(1)}" y1="${highY.toFixed(1)}" x2="${(centerX + ciCapWidth).toFixed(1)}" y2="${highY.toFixed(1)}" class="rank-ci-line"></line>
+          <line x1="${(centerX - ciCapWidth).toFixed(1)}" y1="${lowY.toFixed(1)}" x2="${(centerX + ciCapWidth).toFixed(1)}" y2="${lowY.toFixed(1)}" class="rank-ci-line"></line>
           <rect
-            x="${x.toFixed(1)}"
+            x="${(centerX - (rankSlot / 2)).toFixed(1)}"
             y="${Math.min(highY, y).toFixed(1)}"
-            width="${barWidth.toFixed(1)}"
+            width="${rankSlot.toFixed(1)}"
             height="${Math.max(16, (padTop + plotHeight - Math.min(highY, y))).toFixed(1)}"
             fill="transparent"
             tabindex="0"
@@ -1623,7 +1624,7 @@ function renderRankGapChart(rows, rankDate) {
         `;
       }).join("")}
       ${rows.map((row, index) => {
-        const x = padLeft + (index * (plotWidth / rows.length)) + (plotWidth / rows.length / 2);
+        const x = padLeft + (index * rankSlot) + (rankSlot / 2);
         return `<text x="${x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${row.rank}</text>`;
       }).join("")}
     </svg>

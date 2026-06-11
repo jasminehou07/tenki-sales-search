@@ -916,7 +916,7 @@ td:nth-child(3),
 
 .rank-gap-chart {
   min-height: 290px;
-  padding: 4px 14px 12px;
+  padding: 8px 18px 14px;
 }
 
 .rank-chart-svg {
@@ -928,21 +928,23 @@ td:nth-child(3),
 }
 
 .rank-bar {
+  filter: drop-shadow(0 4px 7px rgba(67, 56, 202, 0.12));
   transition: opacity 140ms ease;
 }
 
 .rank-bar.estimated {
-  fill: #7c5cff;
+  fill: #6f5df6;
 }
 
 .rank-bar.actual {
-  fill: #0f766e;
+  fill: #16877d;
 }
 
 .rank-ci-line {
-  stroke: #263241;
+  opacity: 0.62;
+  stroke: #1f2937;
   stroke-linecap: round;
-  stroke-width: 1.8;
+  stroke-width: 1.45;
 }
 
 .rank-chart-legend {
@@ -970,15 +972,15 @@ td:nth-child(3),
 }
 
 .rank-key.estimated {
-  background: #7c5cff;
+  background: #6f5df6;
 }
 
 .rank-key.actual {
-  background: #0f766e;
+  background: #16877d;
 }
 
 .rank-ci-key {
-  background: #263241;
+  background: #1f2937;
   border-radius: 999px;
   display: inline-block;
   height: 2px;
