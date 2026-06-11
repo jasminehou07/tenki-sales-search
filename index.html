@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260611-reset-date-row">
+  <link rel="stylesheet" href="styles.css?v=20260611-estimate-trend-band">
 </head>
 <body>
   <header class="app-header">
@@ -200,8 +200,8 @@
         </div>
       </div>
       <div class="trend-legend" aria-label="Trend chart legend">
-        <span><i class="legend-line actual-line"></i>Selected sales</span>
-        <small>Actual sales from the selected shop, genre, and date range.</small>
+        <span><i class="legend-line estimate-line"></i>Rakuten estimate</span>
+        <span><i class="legend-band"></i>95% estimate interval</span>
       </div>
       <div id="trendChart" class="trend-chart">
         <div class="empty">Loading...</div>
@@ -230,6 +230,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260611-reset-date-row"></script>
+  <script src="app.js?v=20260611-estimate-trend-band"></script>
 </body>
 </html>

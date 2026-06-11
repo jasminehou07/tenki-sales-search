@@ -456,6 +456,15 @@ input:disabled {
   border-top-color: #0f766e;
 }
 
+.legend-band {
+  display: inline-block;
+  width: 24px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(111, 93, 246, 0.18);
+  border: 1px solid rgba(111, 93, 246, 0.28);
+}
+
 .trend-svg {
   display: block;
   width: 100%;
@@ -472,9 +481,15 @@ input:disabled {
   opacity: 0.55;
 }
 
+.trend-interval-area {
+  fill: rgba(111, 93, 246, 0.16);
+  stroke: rgba(111, 93, 246, 0.22);
+  stroke-width: 1;
+}
+
 .trend-line {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--violet);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 3;

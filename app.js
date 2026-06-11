@@ -7,7 +7,7 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-reset-date-row";
+const RANK_DATA_VERSION = "20260611-estimate-trend-band";
 const SHOP_PROJECTION_VERSION = "20260611-full-tenki-daily-estimates";
 const ALL_TIME_DATA_VERSION = "20260611-full-tenki-daily-estimates";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -828,6 +828,36 @@ function aggregateTrendRows(rows, dates, granularity, valueKey = "sales") {
   return [...buckets.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
+function aggregateEstimateTrendRows(rows, dates, granularity) {
+  const buckets = new Map();
+  dates.forEach((date) => {
+    const key = bucketKeyForDate(date, granularity);
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        key,
+        label: bucketLabel(key, granularity),
+        dates: [],
+        sales: 0,
+        salesLow: 0,
+        salesHigh: 0,
+        rowCount: 0
+      });
+    }
+    buckets.get(key).dates.push(date);
+  });
+  rows.forEach((row) => {
+    const key = bucketKeyForDate(row.date, granularity);
+    const bucket = buckets.get(key);
+    if (!bucket) return;
+    const sales = row.predictedSales || 0;
+    bucket.sales += sales;
+    bucket.salesLow += Number.isFinite(row.predictedSalesLow) ? row.predictedSalesLow : sales;
+    bucket.salesHigh += Number.isFinite(row.predictedSalesHigh) ? row.predictedSalesHigh : sales;
+    bucket.rowCount += 1;
+  });
+  return [...buckets.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
 function buildShopProjectionSeries(rows, dates, granularity) {
   if (!rows.length) return [];
   const topShops = new Map();
@@ -961,7 +991,10 @@ function pointTooltip(point) {
   const promotionLine = events.length
     ? `Promotion: ${events.join(", ")}`
     : "Promotion: No promotion listed";
-  return `${point.label}\nSales: ${yen.format(point.value)}\n${promotionLine}`;
+  const intervalLine = Number.isFinite(point.low) && Number.isFinite(point.high)
+    ? `95% estimate: ${yen.format(point.low)} to ${yen.format(point.high)}`
+    : "";
+  return `${point.label}\nEstimate: ${yen.format(point.value)}${intervalLine ? `\n${intervalLine}` : ""}\n${promotionLine}`;
 }
 
 function compactYen(value) {
@@ -1074,7 +1107,7 @@ async function update() {
       .sort((a, b) => a.localeCompare(b));
     const baseRows = filterRows(allTimeData.summaryRows, { genre, shop });
     const baseItems = filterRows(allTimeData.itemRows, { genre, shop });
-    const trendRows = filterRows(allTimeData.monthlyRows, { genre, shop });
+    const trendRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const shopProjectionRows = shopProjectionRowsForChart(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const summaryEstimateRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const compareRows = compareDate && state.availableDates.has(compareDate)
@@ -1104,7 +1137,7 @@ async function update() {
   ]);
   const baseRows = filterRows(dateRows, { genre, shop });
   const baseItems = filterRows(itemRows, { genre, shop });
-  const trendRows = filterRows(chartRows, { genre, shop });
+  const trendRows = filterEstimateRows(shopEstimateRows, chartDates, { genre, shop });
   const shopProjectionRows = shopProjectionRowsForChart(shopEstimateRows, chartDates, { genre, shop });
   const summaryEstimateRows = filterEstimateRows(summaryEstimateRowsRaw, periodDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
@@ -1342,10 +1375,16 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   }
 
   const granularity = forcedGranularity || els.granularitySelect.value || "daily";
+  if (!rows.length) {
+    els.trendSubtitle.textContent = "No model estimate found";
+    els.trendChart.innerHTML = `<div class="empty">No Rakuten model estimate found for this period.</div>`;
+    return;
+  }
   const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
-  const buckets = aggregateTrendRows(rows, dates, granularity);
+  const buckets = aggregateEstimateTrendRows(rows, dates, granularity);
   const values = buckets.map((bucket) => bucket.sales);
-  const max = Math.max(...values, 1);
+  const highValues = buckets.map((bucket) => bucket.salesHigh || bucket.sales);
+  const max = Math.max(...highValues, ...values, 1);
   const width = 760;
   const height = 230;
   const padX = 62;
@@ -1360,13 +1399,26 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
       x,
       y,
       value,
+      low: buckets[index].salesLow,
+      high: buckets[index].salesHigh,
       label: buckets[index].label,
       key: buckets[index].key,
       dates: buckets[index].dates
     };
   });
+  const highPoints = points.map((point) => ({
+    x: point.x,
+    y: padTop + plotHeight - (((point.high || point.value) / max) * plotHeight)
+  }));
+  const lowPoints = points.map((point) => ({
+    x: point.x,
+    y: padTop + plotHeight - (((point.low || point.value) / max) * plotHeight)
+  }));
   const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
-  const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
+  const intervalArea = [
+    ...highPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`),
+    ...lowPoints.slice().reverse().map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+  ].join(" ");
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: max * ratio,
     y: padTop + plotHeight - (plotHeight * ratio)
@@ -1376,8 +1428,8 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   ));
 
   els.trendSubtitle.textContent = dates.length === 1
-    ? `${label} sales`
-    : `${dates[0]} to ${dates[dates.length - 1]} ${granularity} sales`;
+    ? `${label} Rakuten estimate`
+    : `${dates[0]} to ${dates[dates.length - 1]} ${granularity} Rakuten estimate`;
 
   els.trendChart.innerHTML = `
     <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Daily sales trend chart">
@@ -1385,7 +1437,7 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
         <line x1="${padX}" y1="${tick.y.toFixed(1)}" x2="${width - padX}" y2="${tick.y.toFixed(1)}" class="trend-grid"></line>
         <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
       `).join("")}
-      <polygon points="${area}" class="trend-area"></polygon>
+      <polygon points="${intervalArea}" class="trend-interval-area"></polygon>
       <polyline points="${line}" class="trend-line"></polyline>
       ${points.map((point) => {
         const hasEvent = showEventMarkers && eventsForDates(point.dates).length > 0;
