@@ -8,8 +8,8 @@ const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260611-gbt-rakuten-rank";
-const SHOP_PROJECTION_VERSION = "20260611-page-view-projection";
-const ALL_TIME_DATA_VERSION = "20260611-page-view-projection";
+const SHOP_PROJECTION_VERSION = "20260611-page-view-interval";
+const ALL_TIME_DATA_VERSION = "20260611-page-view-interval";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -62,6 +62,7 @@ const els = {
   unitsMetric: document.getElementById("unitsMetric"),
   pageViewsMetricLabel: document.getElementById("pageViewsMetricLabel"),
   pageViewsMetric: document.getElementById("pageViewsMetric"),
+  pageViewsMetricRange: document.getElementById("pageViewsMetricRange"),
   trendChart: document.getElementById("trendChart"),
   trendSubtitle: document.getElementById("trendSubtitle"),
   shopProjectionChart: document.getElementById("shopProjectionChart"),
@@ -520,7 +521,9 @@ function estimateFromCsv(row) {
     shop: row.shop || "",
     genre: row.genre_id || row.genre,
     predictedSales: Number(row.predicted_sales) || 0,
-    predictedPageViews: Number(row.predicted_page_views) || 0
+    predictedPageViews: Number(row.predicted_page_views) || 0,
+    predictedPageViewsLow: Number(row.predicted_page_views_low) || 0,
+    predictedPageViewsHigh: Number(row.predicted_page_views_high) || 0
   };
 }
 
@@ -1116,6 +1119,7 @@ function renderEmptyState() {
   els.unitsMetric.textContent = "-";
   els.pageViewsMetricLabel.textContent = "Page views";
   els.pageViewsMetric.textContent = "-";
+  els.pageViewsMetricRange.textContent = "";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
   els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
@@ -1214,12 +1218,17 @@ function renderSummary(rows, estimateRows = []) {
     return acc;
   }, { sales: 0, units: 0, pageViews: 0 });
   const estimatedPageViews = estimateRows.reduce((sum, row) => sum + row.predictedPageViews, 0);
+  const estimatedPageViewsLow = estimateRows.reduce((sum, row) => sum + row.predictedPageViewsLow, 0);
+  const estimatedPageViewsHigh = estimateRows.reduce((sum, row) => sum + row.predictedPageViewsHigh, 0);
   const useEstimatedPageViews = totals.pageViews === 0 && estimatedPageViews > 0;
 
   els.salesMetric.textContent = yen.format(totals.sales);
   els.unitsMetric.textContent = whole.format(totals.units);
   els.pageViewsMetricLabel.textContent = useEstimatedPageViews ? "Page views (est.)" : "Page views";
   els.pageViewsMetric.textContent = whole.format(useEstimatedPageViews ? estimatedPageViews : totals.pageViews);
+  els.pageViewsMetricRange.textContent = useEstimatedPageViews
+    ? `95% range: ${whole.format(estimatedPageViewsLow)} - ${whole.format(estimatedPageViewsHigh)}`
+    : "";
 }
 
 function renderTrendChart(rows, dates, label, forcedGranularity = "") {
