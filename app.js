@@ -1337,20 +1337,18 @@ async function loadAllTimeData() {
 }
 
 function rankSummaryForMetric(rankRows, dates, genre) {
-  if (genre === "all" || !dates.length) return null;
-  const availableRankDates = new Set(rankRows
-    .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20 && row.salesKnown)
-    .map((row) => row.date));
-  const rankDate = [...dates].reverse().find((date) => availableRankDates.has(date));
-  if (!rankDate) return null;
+  if (!dates.length) return null;
+  const dateSet = new Set(dates);
   const rows = rankRows.filter((row) =>
-    row.date === rankDate &&
-    row.genre === genre &&
+    dateSet.has(row.date) &&
+    (genre === "all" || row.genre === genre) &&
     row.rank >= 1 &&
     row.rank <= 20 &&
     row.salesKnown
   );
   if (!rows.length) return null;
+  const availableRankDates = new Set(rows.map((row) => row.date));
+  if (dates.length > 1 && availableRankDates.size < dates.length) return null;
   return rows.reduce((acc, row) => {
     acc.sales += row.sales;
     acc.salesLow += Number.isFinite(row.salesLow) ? row.salesLow : row.sales;
