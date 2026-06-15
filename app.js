@@ -7,8 +7,9 @@ const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const TREND_ESTIMATES_BY_MONTH_URL = "data/trend-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
+const RANK_SUMMARY_URL = "data/rank-summary-by-month";
 const ALL_TIME_URL = "data/all-time";
-const RANK_DATA_VERSION = "20260611-rank-shape-fix";
+const RANK_DATA_VERSION = "20260615-rank-tail-summary";
 const SHOP_PROJECTION_VERSION = "20260615-all-genre-trend";
 const ALL_TIME_DATA_VERSION = "20260615-all-genre-trend";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
@@ -25,6 +26,7 @@ const state = {
   loadedShopEstimateMonths: new Map(),
   loadedTrendEstimateMonths: new Map(),
   loadedRankGapMonths: new Map(),
+  loadedRankSummaryMonths: new Map(),
   allTimeData: null,
   genreLabels: new Map(),
   byDate: new Map(),
@@ -571,6 +573,20 @@ function rankGapFromCsv(row) {
   };
 }
 
+function rankSummaryFromCsv(row) {
+  return {
+    date: row.date,
+    genre: row.genre,
+    sales: Number(row.sales) || 0,
+    salesLow: Number(row.sales_low) || 0,
+    salesHigh: Number(row.sales_high) || 0,
+    units: Number(row.units) || 0,
+    unitsLow: Number(row.units_low) || 0,
+    unitsHigh: Number(row.units_high) || 0,
+    avgPrice: Number(row.avg_price) || 0
+  };
+}
+
 function rankCurveFromCsv(row) {
   return {
     genre: row.genre,
@@ -1110,6 +1126,13 @@ async function loadPeriodRankGaps(dates) {
   return rowSets.flat();
 }
 
+async function loadPeriodRankSummaries(dates) {
+  const dateSet = new Set(dates);
+  const months = monthsForDates(dates);
+  const rowSets = await Promise.all(months.map((month) => loadRankSummaryMonth(month)));
+  return rowSets.flat().filter((row) => dateSet.has(row.date));
+}
+
 async function update() {
   const genre = els.genreSelect.value;
   const shop = els.shopSelect.value;
@@ -1132,11 +1155,14 @@ async function update() {
     const trendSourceRows = shop === "all" ? allTimeData.trendEstimateRows : allTimeData.shopEstimateRows;
     const trendRows = filterTrendEstimateRows(trendSourceRows, monthlyDates, { genre, shop });
     const summaryEstimateRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
+    const rankSummaryRows = shop === "all"
+      ? allTimeData.rankSummaryRows.filter((row) => row.genre === genre)
+      : [];
     const compareRows = compareDate && state.availableDates.has(compareDate)
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
       : [];
 
-    renderSummary(baseRows, summaryEstimateRows, allTimeData.rankRows, periodDates, genre);
+    renderSummary(baseRows, summaryEstimateRows, rankSummaryRows, monthlyDates, genre);
     renderTrendChart(trendRows, monthlyDates, currentLabel, "monthly");
     renderShopComparison(baseRows);
     renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
@@ -1150,11 +1176,12 @@ async function update() {
   const chartDates = trendDatesForPeriod(periodDates);
   const rankProjectionDates = trendDatesForPeriod(periodDates);
   const rankLoadDates = [...new Set([...periodDates, ...rankProjectionDates])];
-  const [dateRows, trendSourceRows, summaryEstimateRowsRaw, rankGapRows] = await Promise.all([
+  const [dateRows, trendSourceRows, summaryEstimateRowsRaw, rankGapRows, rankSummaryRows] = await Promise.all([
     loadPeriodDates(periodDates),
     shop === "all" ? loadPeriodTrendEstimates(chartDates) : loadPeriodShopEstimates(chartDates),
     loadPeriodShopEstimates(periodDates),
-    loadPeriodRankGaps(rankLoadDates)
+    loadPeriodRankGaps(rankLoadDates),
+    shop === "all" ? loadPeriodRankSummaries(periodDates) : Promise.resolve([])
   ]);
   const baseRows = filterRows(dateRows, { genre, shop });
   const trendRows = filterTrendEstimateRows(trendSourceRows, chartDates, { genre, shop });
@@ -1163,7 +1190,7 @@ async function update() {
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
     : [];
 
-  renderSummary(baseRows, summaryEstimateRows, rankGapRows, periodDates, genre);
+  renderSummary(baseRows, summaryEstimateRows, rankSummaryRows, periodDates, genre);
   if (isRangeMode()) {
     renderTrendChart(trendRows, chartDates, currentLabel);
   }
@@ -1310,6 +1337,19 @@ async function loadRankGapMonth(month) {
   return rows;
 }
 
+async function loadRankSummaryMonth(month) {
+  if (state.loadedRankSummaryMonths.has(month)) return state.loadedRankSummaryMonths.get(month);
+  const response = await fetch(`${RANK_SUMMARY_URL}/${month}.csv?v=${RANK_DATA_VERSION}`);
+  if (!response.ok) {
+    state.loadedRankSummaryMonths.set(month, []);
+    return [];
+  }
+  const text = await response.text();
+  const rows = parseCsv(text).map(rankSummaryFromCsv);
+  state.loadedRankSummaryMonths.set(month, rows);
+  return rows;
+}
+
 async function loadAllTimeData() {
   if (state.allTimeData) return state.allTimeData;
   els.loadStatus.textContent = "Loading compact all-time data...";
@@ -1318,12 +1358,14 @@ async function loadAllTimeData() {
     monthlyText,
     shopEstimatesText,
     trendEstimatesText,
+    rankSummaryText,
     rankRowsText
   ] = await Promise.all([
     fetch(`${ALL_TIME_URL}/summary.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/shop_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/trend_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/rank_summary_monthly.csv?v=${RANK_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/ranked_shops_latest.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text())
   ]);
   state.allTimeData = {
@@ -1331,6 +1373,7 @@ async function loadAllTimeData() {
     monthlyRows: parseCsv(monthlyText).map(allTimeMonthlyFromCsv),
     shopEstimateRows: parseCsv(shopEstimatesText).map(estimateFromCsv),
     trendEstimateRows: parseCsv(trendEstimatesText).map(estimateFromCsv),
+    rankSummaryRows: parseCsv(rankSummaryText).map(rankSummaryFromCsv),
     rankRows: parseCsv(rankRowsText).map(rankGapFromCsv)
   };
   return state.allTimeData;
@@ -1341,10 +1384,7 @@ function rankSummaryForMetric(rankRows, dates, genre) {
   const dateSet = new Set(dates);
   const rows = rankRows.filter((row) =>
     dateSet.has(row.date) &&
-    (genre === "all" || row.genre === genre) &&
-    row.rank >= 1 &&
-    row.rank <= 20 &&
-    row.salesKnown
+    row.genre === genre
   );
   if (!rows.length) return null;
   const availableRankDates = new Set(rows.map((row) => row.date));
@@ -1353,8 +1393,11 @@ function rankSummaryForMetric(rankRows, dates, genre) {
     acc.sales += row.sales;
     acc.salesLow += Number.isFinite(row.salesLow) ? row.salesLow : row.sales;
     acc.salesHigh += Number.isFinite(row.salesHigh) ? row.salesHigh : row.sales;
+    acc.units += row.units || 0;
+    acc.unitsLow += Number.isFinite(row.unitsLow) ? row.unitsLow : row.units;
+    acc.unitsHigh += Number.isFinite(row.unitsHigh) ? row.unitsHigh : row.units;
     return acc;
-  }, { sales: 0, salesLow: 0, salesHigh: 0 });
+  }, { sales: 0, salesLow: 0, salesHigh: 0, units: 0, unitsLow: 0, unitsHigh: 0 });
 }
 
 function renderSummary(rows, estimateRows = [], rankRows = [], dates = [], genre = "all") {
@@ -1376,9 +1419,9 @@ function renderSummary(rows, estimateRows = [], rankRows = [], dates = [], genre
   const hasEstimateRows = estimateRows.length > 0;
   const rankSummary = rankSummaryForMetric(rankRows, dates, genre);
   const estimatedAveragePrice = estimatedUnits > 0 ? estimatedSales / estimatedUnits : 0;
-  const rankEstimatedUnits = rankSummary && estimatedAveragePrice > 0 ? rankSummary.sales / estimatedAveragePrice : 0;
-  const rankEstimatedUnitsLow = rankSummary && estimatedAveragePrice > 0 ? rankSummary.salesLow / estimatedAveragePrice : 0;
-  const rankEstimatedUnitsHigh = rankSummary && estimatedAveragePrice > 0 ? rankSummary.salesHigh / estimatedAveragePrice : 0;
+  const rankEstimatedUnits = rankSummary?.units || (rankSummary && estimatedAveragePrice > 0 ? rankSummary.sales / estimatedAveragePrice : 0);
+  const rankEstimatedUnitsLow = rankSummary?.unitsLow || (rankSummary && estimatedAveragePrice > 0 ? rankSummary.salesLow / estimatedAveragePrice : 0);
+  const rankEstimatedUnitsHigh = rankSummary?.unitsHigh || (rankSummary && estimatedAveragePrice > 0 ? rankSummary.salesHigh / estimatedAveragePrice : 0);
   const useEstimatedSales = Boolean((rankSummary && rankSummary.sales > 0) || (hasEstimateRows && estimatedSales > 0));
   const useEstimatedUnits = Boolean((rankEstimatedUnits > 0) || (hasEstimateRows && estimatedUnits > 0));
   const useEstimatedPageViews = hasEstimateRows && estimatedPageViews > 0;
