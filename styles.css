@@ -1013,6 +1013,22 @@ td:nth-child(3),
   font-weight: 700;
 }
 
+.rank-projection-control {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 850;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.rank-projection-control select {
+  min-height: 34px;
+  min-width: 82px;
+  padding: 6px 28px 6px 10px;
+}
+
 .source-pill {
   display: inline-flex;
   align-items: center;
