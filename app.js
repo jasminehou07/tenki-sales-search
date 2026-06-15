@@ -5,11 +5,12 @@ const RANK_EVENT_FACTORS_URL = "data/rank_event_factors.csv?v=20260611-gbt-rakut
 const BY_MONTH_URL = "data/by-month";
 const ITEMS_BY_MONTH_URL = "data/items-by-month";
 const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
+const TREND_ESTIMATES_BY_MONTH_URL = "data/trend-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260611-rank-shape-fix";
-const SHOP_PROJECTION_VERSION = "20260615-unit-fallback";
-const ALL_TIME_DATA_VERSION = "20260615-unit-fallback";
+const SHOP_PROJECTION_VERSION = "20260615-all-genre-trend";
+const ALL_TIME_DATA_VERSION = "20260615-all-genre-trend";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {
@@ -22,6 +23,7 @@ const state = {
   loadedMonths: new Map(),
   loadedItemMonths: new Map(),
   loadedShopEstimateMonths: new Map(),
+  loadedTrendEstimateMonths: new Map(),
   loadedRankGapMonths: new Map(),
   allTimeData: null,
   genreLabels: new Map(),
@@ -1091,6 +1093,13 @@ async function loadPeriodShopEstimates(dates) {
   return rowSets.flat().filter((row) => dateSet.has(row.date));
 }
 
+async function loadPeriodTrendEstimates(dates) {
+  const dateSet = new Set(dates);
+  const months = monthsForDates(dates);
+  const rowSets = await Promise.all(months.map((month) => loadTrendEstimateMonth(month)));
+  return rowSets.flat().filter((row) => dateSet.has(row.date));
+}
+
 async function loadPeriodRankGaps(dates) {
   const months = monthsForDates(dates);
   const rowSets = await Promise.all(months.map((month) => loadRankGapMonth(month)));
@@ -1116,7 +1125,8 @@ async function update() {
     const monthlyDates = [...new Set(allTimeData.monthlyRows.map((row) => row.date))]
       .sort((a, b) => a.localeCompare(b));
     const baseRows = filterRows(allTimeData.summaryRows, { genre, shop });
-    const trendRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
+    const trendSourceRows = shop === "all" ? allTimeData.trendEstimateRows : allTimeData.shopEstimateRows;
+    const trendRows = filterTrendEstimateRows(trendSourceRows, monthlyDates, { genre, shop });
     const summaryEstimateRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const compareRows = compareDate && state.availableDates.has(compareDate)
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
@@ -1133,15 +1143,14 @@ async function update() {
   }
 
   const chartDates = trendDatesForPeriod(periodDates);
-  const [dateRows, chartRows, shopEstimateRows, summaryEstimateRowsRaw, rankGapRows] = await Promise.all([
+  const [dateRows, trendSourceRows, summaryEstimateRowsRaw, rankGapRows] = await Promise.all([
     loadPeriodDates(periodDates),
-    loadPeriodDates(chartDates),
-    loadPeriodShopEstimates(chartDates),
+    shop === "all" ? loadPeriodTrendEstimates(chartDates) : loadPeriodShopEstimates(chartDates),
     loadPeriodShopEstimates(periodDates),
     loadPeriodRankGaps(periodDates)
   ]);
   const baseRows = filterRows(dateRows, { genre, shop });
-  const trendRows = filterEstimateRows(shopEstimateRows, chartDates, { genre, shop });
+  const trendRows = filterTrendEstimateRows(trendSourceRows, chartDates, { genre, shop });
   const summaryEstimateRows = filterEstimateRows(summaryEstimateRowsRaw, periodDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
@@ -1176,6 +1185,12 @@ function filterEstimateRows(rows, dates, filters) {
     if (filters.shop !== "all" && row.shop && row.shop !== filters.shop) return false;
     return true;
   });
+}
+
+function filterTrendEstimateRows(rows, dates, filters) {
+  if (filters.shop !== "all") return filterEstimateRows(rows, dates, filters);
+  const dateSet = new Set(dates);
+  return rows.filter((row) => dateSet.has(row.date) && row.genre === filters.genre);
 }
 
 function shopProjectionRowsForChart(rows, dates, filters) {
@@ -1257,6 +1272,19 @@ async function loadShopEstimateMonth(month) {
   return rows;
 }
 
+async function loadTrendEstimateMonth(month) {
+  if (state.loadedTrendEstimateMonths.has(month)) return state.loadedTrendEstimateMonths.get(month);
+  const response = await fetch(`${TREND_ESTIMATES_BY_MONTH_URL}/${month}.csv?v=${SHOP_PROJECTION_VERSION}`);
+  if (!response.ok) {
+    state.loadedTrendEstimateMonths.set(month, []);
+    return [];
+  }
+  const text = await response.text();
+  const rows = parseCsv(text).map(estimateFromCsv);
+  state.loadedTrendEstimateMonths.set(month, rows);
+  return rows;
+}
+
 async function loadRankGapMonth(month) {
   if (state.loadedRankGapMonths.has(month)) return state.loadedRankGapMonths.get(month);
   const response = await fetch(`${RANK_GAP_URL}/${month}.csv?v=${RANK_DATA_VERSION}`);
@@ -1277,17 +1305,20 @@ async function loadAllTimeData() {
     summaryText,
     monthlyText,
     shopEstimatesText,
+    trendEstimatesText,
     rankRowsText
   ] = await Promise.all([
     fetch(`${ALL_TIME_URL}/summary.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/shop_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
+    fetch(`${ALL_TIME_URL}/trend_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/ranked_shops_latest.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text())
   ]);
   state.allTimeData = {
     summaryRows: parseCsv(summaryText).map(allTimeSummaryFromCsv),
     monthlyRows: parseCsv(monthlyText).map(allTimeMonthlyFromCsv),
     shopEstimateRows: parseCsv(shopEstimatesText).map(estimateFromCsv),
+    trendEstimateRows: parseCsv(trendEstimatesText).map(estimateFromCsv),
     rankRows: parseCsv(rankRowsText).map(rankGapFromCsv)
   };
   return state.allTimeData;
