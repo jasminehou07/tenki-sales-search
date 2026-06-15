@@ -1,2 +1,2 @@
-rows,actual_sales,predicted_sales,wape,median_ape,within_25pct,validation_start,validation_end,genre_count,tuned_genre_count,target
-377068.0,31187567.0,30907761.78,0.32868591375602924,0.3436676140246028,0.3816644075830646,2025-06-01,2025-12-02,100,100,page_views
+rows,actual_sales,predicted_sales,wape,median_ape,within_25pct,validation_method,hidden_holdout_rate,hidden_holdout_seed,train_rows,hidden_rows,validation_start,validation_end,genre_count,tuned_genre_count,target
+148427.0,11646306.0,11728847.08432577,0.30605939648606867,0.331427966866799,0.3950013877512337,random_hidden_5pct,0.05,20260615,2820950,148427,2018-10-01,2026-05-31,100,99,page_views
