@@ -2198,8 +2198,18 @@ async function init() {
 els.rankProjectionSelect?.addEventListener("input", () => update());
 
 els.dateModeSelect.addEventListener("input", () => {
-  if (isRangeMode() && !selectedEndDate()) {
-    setEndDateParts(selectedDate());
+  if (isRangeMode()) {
+    const currentDate = selectedDate();
+    const currentEndDate = selectedEndDate();
+    if (!currentEndDate || currentEndDate === currentDate) {
+      const dates = datesEndingOn(currentDate, 7);
+      if (dates.length > 1) {
+        setDateParts(dates[0]);
+        setEndDateParts(dates[dates.length - 1]);
+      } else if (currentDate) {
+        setEndDateParts(currentDate);
+      }
+    }
   }
   syncRangeControls();
   syncDateRangeLabel();
