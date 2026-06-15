@@ -1027,8 +1027,7 @@ function showTrendTooltip(point, tooltip, event) {
   const lines = point.dataset.tooltip.split("\n");
   tooltip.innerHTML = `
     <strong>${escapeHtml(lines[0] || "")}</strong>
-    <span>${escapeHtml(lines[1] || "")}</span>
-    <span>${escapeHtml(lines[2] || "")}</span>
+    ${lines.slice(1).map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
   `;
   tooltip.hidden = false;
   positionTrendTooltip(tooltip, event);
