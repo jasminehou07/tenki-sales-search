@@ -1640,7 +1640,7 @@ function renderRankGapChart(rows, rankDate) {
   const padBottom = 42;
   const plotWidth = width - padLeft - padRight;
   const plotHeight = height - padTop - padBottom;
-  const maxValue = Math.max(...rows.map((row) => Math.max(row.salesHigh || row.sales, row.sales || 0)), 1);
+  const maxValue = Math.max(...rows.map((row) => Math.max(row.salesHigh || row.sales, row.sales || 0)), 1) * 1.12;
   const rankSlot = plotWidth / rows.length;
   const barWidth = Math.max(8, Math.min(16, rankSlot * 0.45));
   const ciCapWidth = Math.max(5, Math.min(8, barWidth * 0.55));
