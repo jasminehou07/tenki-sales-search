@@ -105,7 +105,7 @@ function addOptions(select, rows) {
   rows.forEach((row) => {
     const option = document.createElement("option");
     option.value = row.id;
-    option.textContent = row.label;
+    option.textContent = row.displayLabel || row.label;
     select.appendChild(option);
   });
 }
@@ -1008,6 +1008,11 @@ function compactYen(value) {
   if (value >= 1000000) return `JPY ${(value / 1000000).toFixed(0)}M`;
   if (value >= 1000) return `JPY ${(value / 1000).toFixed(0)}K`;
   return yen.format(value);
+}
+
+function genreOptionLabel(row) {
+  const sales = optionSales(row);
+  return sales > 0 ? `${row.label} - ${compactYen(sales)} sales` : row.label;
 }
 
 function positionTrendTooltip(tooltip, event) {
@@ -1926,7 +1931,8 @@ async function init() {
     const options = parseCsv(optionsText);
     const genreOptions = options
       .filter((row) => row.type === "genre")
-      .sort((a, b) => optionSales(b) - optionSales(a) || a.label.localeCompare(b.label));
+      .sort((a, b) => optionSales(b) - optionSales(a) || a.label.localeCompare(b.label))
+      .map((row) => ({ ...row, displayLabel: genreOptionLabel(row) }));
     state.genreLabels = new Map(genreOptions.map((row) => [row.id, row.label]));
     addOptions(els.genreSelect, genreOptions);
     addOptions(els.shopSelect, options.filter((row) => row.type === "shop"));
