@@ -1189,9 +1189,9 @@ function renderEmptyState() {
   els.unitsMetricLabel.textContent = "Units sold";
   els.unitsMetric.textContent = "-";
   els.unitsMetricInterval.innerHTML = "";
-  els.pageViewsMetricLabel.textContent = "Page views";
-  els.pageViewsMetric.textContent = "-";
-  els.pageViewsMetricInterval.innerHTML = "";
+  if (els.pageViewsMetricLabel) els.pageViewsMetricLabel.textContent = "Page views";
+  if (els.pageViewsMetric) els.pageViewsMetric.textContent = "-";
+  if (els.pageViewsMetricInterval) els.pageViewsMetricInterval.innerHTML = "";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
   els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
@@ -1360,11 +1360,17 @@ function renderSummary(rows, estimateRows = [], rankRows = [], dates = [], genre
   els.unitsMetricInterval.innerHTML = useEstimatedUnits
     ? metricIntervalHtml(displayUnitsLow, displayUnits, displayUnitsHigh, whole)
     : "";
-  els.pageViewsMetricLabel.textContent = useEstimatedPageViews ? "Page views (est.)" : "Page views";
-  els.pageViewsMetric.textContent = whole.format(useEstimatedPageViews ? estimatedPageViews : totals.pageViews);
-  els.pageViewsMetricInterval.innerHTML = useEstimatedPageViews
-    ? metricIntervalHtml(estimatedPageViewsLow, estimatedPageViews, estimatedPageViewsHigh, whole)
-    : "";
+  if (els.pageViewsMetricLabel) {
+    els.pageViewsMetricLabel.textContent = useEstimatedPageViews ? "Page views (est.)" : "Page views";
+  }
+  if (els.pageViewsMetric) {
+    els.pageViewsMetric.textContent = whole.format(useEstimatedPageViews ? estimatedPageViews : totals.pageViews);
+  }
+  if (els.pageViewsMetricInterval) {
+    els.pageViewsMetricInterval.innerHTML = useEstimatedPageViews
+      ? metricIntervalHtml(estimatedPageViewsLow, estimatedPageViews, estimatedPageViewsHigh, whole)
+      : "";
+  }
 }
 
 function renderTrendChart(rows, dates, label, forcedGranularity = "") {
