@@ -1682,6 +1682,31 @@ function bestRankRow(rows, rank) {
     || null;
 }
 
+function aggregateRankRows(rows, rank) {
+  if (!rows.length) return null;
+  const sales = rows.reduce((sum, row) => sum + (row.sales || 0), 0);
+  const salesLow = rows.reduce((sum, row) => sum + (row.salesLow || row.sales || 0), 0);
+  const salesHigh = rows.reduce((sum, row) => sum + (row.salesHigh || row.sales || 0), 0);
+  const allActual = rows.every((row) => row.source === "actual");
+  return {
+    rank,
+    sales,
+    salesLow,
+    salesHigh,
+    source: allActual ? "actual" : "estimated",
+    salesKnown: true
+  };
+}
+
+function rankEstimateForRows(rows, rank, genre) {
+  if (genre === "all") return aggregateRankRows(rows.filter((row) => row.rank === rank), rank);
+  return bestRankRow(rows, rank);
+}
+
+function rankGenreLabel(genre) {
+  return genre === "all" ? "All product genres" : genreLabel(genre);
+}
+
 function renderRankProjection(rows, dates) {
   if (!els.rankProjectionChart || !els.rankProjectionSubtitle || !els.rankProjectionSelect) return;
   const genre = els.genreSelect.value;
@@ -1690,12 +1715,6 @@ function renderRankProjection(rows, dates) {
   if (!dates.length) {
     els.rankProjectionSubtitle.textContent = "Choose a date";
     els.rankProjectionChart.innerHTML = `<div class="empty">Choose a date or period to see a rank projection.</div>`;
-    return;
-  }
-
-  if (genre === "all") {
-    els.rankProjectionSubtitle.textContent = "Choose one genre";
-    els.rankProjectionChart.innerHTML = `<div class="empty">Choose one product genre to see the rank #${rank} projection.</div>`;
     return;
   }
 
@@ -1714,14 +1733,14 @@ function renderRankProjection(rows, dates) {
   const dateSet = new Set(dates);
   const byDate = new Map();
   rows
-    .filter((row) => dateSet.has(row.date) && row.genre === genre && row.rank === rank)
+    .filter((row) => dateSet.has(row.date) && (genre === "all" || row.genre === genre) && row.rank === rank)
     .forEach((row) => {
       if (!byDate.has(row.date)) byDate.set(row.date, []);
       byDate.get(row.date).push(row);
     });
 
   const points = dates.map((date) => {
-    const row = bestRankRow(byDate.get(date) || [], rank);
+    const row = rankEstimateForRows(byDate.get(date) || [], rank, genre);
     if (!row) return null;
     const sales = row.sales || 0;
     return {
@@ -1736,7 +1755,7 @@ function renderRankProjection(rows, dates) {
 
   if (!points.length) {
     els.rankProjectionSubtitle.textContent = `Rank #${rank}`;
-    els.rankProjectionChart.innerHTML = `<div class="empty">No rank #${rank} projection found for ${periodLabel(dates)} and ${genreLabel(genre)}.</div>`;
+    els.rankProjectionChart.innerHTML = `<div class="empty">No rank #${rank} projection found for ${periodLabel(dates)} and ${rankGenreLabel(genre)}.</div>`;
     return;
   }
 
@@ -1775,7 +1794,7 @@ function renderRankProjection(rows, dates) {
     index === 0 || index === chartPoints.length - 1 || index === Math.floor((chartPoints.length - 1) / 2)
   ));
 
-  els.rankProjectionSubtitle.textContent = `${genreLabel(genre)} rank #${rank} projection`;
+  els.rankProjectionSubtitle.textContent = `${rankGenreLabel(genre)} rank #${rank} projection`;
   els.rankProjectionChart.innerHTML = `
     <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Rank #${rank} projection chart">
       ${yTicks.map((tick) => `
@@ -1896,12 +1915,6 @@ function renderRankGapChart(rows, rankDate) {
 
 function renderRankGapEstimates(rows, dates) {
   const genre = els.genreSelect.value;
-  if (genre === "all") {
-    els.rankGapCount.textContent = "Choose one genre";
-    els.rankGapChart.innerHTML = `<div class="empty">Choose one product genre to see rank estimates.</div>`;
-    els.rankGapBody.innerHTML = `<tr><td colspan="4">Choose one product genre to see a rank 1-20 table.</td></tr>`;
-    return;
-  }
   if (GENRES_WITHOUT_RANK_DATA.has(genre)) {
     els.rankGapCount.textContent = "No model file";
     els.rankGapChart.innerHTML = `<div class="empty">No rank model output is available for ${genreLabel(genre)}.</div>`;
@@ -1910,21 +1923,26 @@ function renderRankGapEstimates(rows, dates) {
   }
 
   const availableRankDates = new Set(rows
-    .filter((row) => row.genre === genre && row.rank >= 1 && row.rank <= 20)
+    .filter((row) => (genre === "all" || row.genre === genre) && row.rank >= 1 && row.rank <= 20)
     .map((row) => row.date));
   const rankDate = [...dates].reverse().find((date) => availableRankDates.has(date));
   if (!rankDate) {
     els.rankGapCount.textContent = "No rank data";
-    els.rankGapChart.innerHTML = `<div class="empty">No rank data found for ${periodLabel(dates)} and ${genreLabel(genre)}.</div>`;
-    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${periodLabel(dates)} and ${genreLabel(genre)}.</td></tr>`;
+    els.rankGapChart.innerHTML = `<div class="empty">No rank data found for ${periodLabel(dates)} and ${rankGenreLabel(genre)}.</div>`;
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${periodLabel(dates)} and ${rankGenreLabel(genre)}.</td></tr>`;
     return;
   }
 
-  const filtered = rows.filter((row) => row.date === rankDate && row.genre === genre && row.rank >= 1 && row.rank <= 20);
+  const filtered = rows.filter((row) =>
+    row.date === rankDate &&
+    (genre === "all" || row.genre === genre) &&
+    row.rank >= 1 &&
+    row.rank <= 20
+  );
   if (!filtered.length) {
     els.rankGapCount.textContent = "No rank data";
-    els.rankGapChart.innerHTML = `<div class="empty">No rank data found for ${rankDate} and ${genreLabel(genre)}.</div>`;
-    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${rankDate} and ${genreLabel(genre)}.</td></tr>`;
+    els.rankGapChart.innerHTML = `<div class="empty">No rank data found for ${rankDate} and ${rankGenreLabel(genre)}.</div>`;
+    els.rankGapBody.innerHTML = `<tr><td colspan="4">No rank data found for ${rankDate} and ${rankGenreLabel(genre)}.</td></tr>`;
     return;
   }
 
@@ -1932,6 +1950,10 @@ function renderRankGapEstimates(rows, dates) {
 
   const estimateForRank = (rank) => {
     const rankRows = filtered.filter((row) => row.rank === rank);
+    if (genre === "all") {
+      const aggregated = aggregateRankRows(rankRows, rank);
+      if (aggregated) return aggregated;
+    }
     const sameDayKnown = rankRows.find((row) => row.source === "actual" && row.salesKnown);
     if (sameDayKnown) return sameDayKnown;
     const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
@@ -1961,7 +1983,7 @@ function renderRankGapEstimates(rows, dates) {
     }
   }
 
-  els.rankGapCount.textContent = `Rakuten model estimates for ${rankDate}`;
+  els.rankGapCount.textContent = `${rankGenreLabel(genre)} estimates for ${rankDate}`;
   renderRankGapChart(topRows, rankDate);
   els.rankGapBody.innerHTML = topRows.map((row, index) => {
     const isActual = row.source === "actual";
