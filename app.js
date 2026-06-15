@@ -1,4 +1,4 @@
-const OPTIONS_URL = "data/filter_options.csv";
+const OPTIONS_URL = "data/filter_options.csv?v=20260615-genre-sales-order";
 const EVENTS_URL = "data/events.csv";
 const RANK_CURVES_URL = "data/rank_curves.csv?v=20260611-gbt-rakuten-rank";
 const RANK_EVENT_FACTORS_URL = "data/rank_event_factors.csv?v=20260611-gbt-rakuten-rank";
@@ -108,6 +108,10 @@ function addOptions(select, rows) {
     option.textContent = row.label;
     select.appendChild(option);
   });
+}
+
+function optionSales(row) {
+  return Number(String(row.sales || "0").replaceAll(",", "")) || 0;
 }
 
 function escapeHtml(value) {
@@ -1918,7 +1922,7 @@ async function init() {
     const options = parseCsv(optionsText);
     const genreOptions = options
       .filter((row) => row.type === "genre")
-      .sort((a, b) => (Number(b.sales) || 0) - (Number(a.sales) || 0) || a.label.localeCompare(b.label));
+      .sort((a, b) => optionSales(b) - optionSales(a) || a.label.localeCompare(b.label));
     state.genreLabels = new Map(genreOptions.map((row) => [row.id, row.label]));
     addOptions(els.genreSelect, genreOptions);
     addOptions(els.shopSelect, options.filter((row) => row.type === "shop"));
