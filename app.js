@@ -1732,9 +1732,14 @@ function renderRankProjection(rows, dates) {
 
   const dateSet = new Set(dates);
   const byDate = new Map();
+  const scaleRowsByDateRank = new Map();
   rows
-    .filter((row) => dateSet.has(row.date) && (genre === "all" || row.genre === genre) && row.rank === rank)
+    .filter((row) => dateSet.has(row.date) && (genre === "all" || row.genre === genre) && row.rank >= 1 && row.rank <= 20)
     .forEach((row) => {
+      const scaleKey = `${row.date}|${row.rank}`;
+      if (!scaleRowsByDateRank.has(scaleKey)) scaleRowsByDateRank.set(scaleKey, []);
+      scaleRowsByDateRank.get(scaleKey).push(row);
+      if (row.rank !== rank) return;
       if (!byDate.has(row.date)) byDate.set(row.date, []);
       byDate.get(row.date).push(row);
     });
@@ -1766,8 +1771,15 @@ function renderRankProjection(rows, dates) {
   const padBottom = 44;
   const plotWidth = width - (padX * 2);
   const plotHeight = height - padTop - padBottom;
-  const intervalValues = points.flatMap((point) => [point.low, point.value, point.high]);
-  const rawMin = Math.min(...intervalValues);
+  const scaleValues = [...scaleRowsByDateRank.values()].flatMap((rankRows) => {
+    const sampleRank = rankRows[0]?.rank || rank;
+    const row = rankEstimateForRows(rankRows, sampleRank, genre);
+    if (!row) return [];
+    const sales = row.sales || 0;
+    return [row.salesLow || sales, sales, row.salesHigh || sales];
+  });
+  const intervalValues = scaleValues.length ? scaleValues : points.flatMap((point) => [point.low, point.value, point.high]);
+  const rawMin = Math.min(...intervalValues, 0);
   const rawMax = Math.max(...intervalValues, 1);
   const rawRange = Math.max(rawMax - rawMin, rawMax * 0.08, 1);
   const min = Math.max(0, rawMin - (rawRange * 0.22));
