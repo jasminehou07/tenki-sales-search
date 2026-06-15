@@ -8,8 +8,8 @@ const SHOP_ESTIMATES_BY_MONTH_URL = "data/shop-estimates-by-month";
 const RANK_GAP_URL = "data/ranked-shops";
 const ALL_TIME_URL = "data/all-time";
 const RANK_DATA_VERSION = "20260611-rank-shape-fix";
-const SHOP_PROJECTION_VERSION = "20260615-hidden5-projection";
-const ALL_TIME_DATA_VERSION = "20260615-hidden5-projection";
+const SHOP_PROJECTION_VERSION = "20260615-trained-factor-projection";
+const ALL_TIME_DATA_VERSION = "20260615-trained-factor-projection";
 const GENRES_WITHOUT_RANK_DATA = new Set(["101384", "101954"]);
 
 const state = {

@@ -1,2 +1,2 @@
-rows,actual_sales,predicted_sales,wape,median_ape,within_25pct,validation_method,hidden_holdout_rate,hidden_holdout_seed,train_rows,hidden_rows,validation_start,validation_end,genre_count,tuned_genre_count,target
-148427.0,3179900267.0,3049285633.306655,0.6763963121798161,0.613875254546525,0.20076267384477345,random_hidden_5pct,0.05,20260615,2820950,148427,2018-10-01,2026-05-31,100,99,sales
+rows,actual_sales,predicted_sales,wape,median_ape,within_25pct,baseline_wape,trained_factor_wape,model,validation_method,hidden_holdout_rate,hidden_holdout_seed,train_rows,hidden_rows,validation_start,validation_end,genre_count,tuned_genre_count,target
+148427.0,3179900267.0,3049285633.306655,0.6763963121798161,0.613875254546525,0.20076267384477345,0.6763963121798161,0.7026088364908382,lag_event_baseline,random_hidden_5pct,0.05,20260615,2820950,148427,2018-10-01,2026-05-31,100,99,sales
