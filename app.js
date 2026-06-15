@@ -1779,11 +1779,9 @@ function renderRankProjection(rows, dates) {
     return [row.salesLow || sales, sales, row.salesHigh || sales];
   });
   const intervalValues = scaleValues.length ? scaleValues : points.flatMap((point) => [point.low, point.value, point.high]);
-  const rawMin = Math.min(...intervalValues, 0);
   const rawMax = Math.max(...intervalValues, 1);
-  const rawRange = Math.max(rawMax - rawMin, rawMax * 0.08, 1);
-  const min = Math.max(0, rawMin - (rawRange * 0.22));
-  const max = rawMax + (rawRange * 0.5);
+  const min = 0;
+  const max = rawMax * 1.5;
   const scaleRange = Math.max(max - min, 1);
   const yForValue = (value) => padTop + plotHeight - (((Math.min(max, Math.max(min, value)) - min) / scaleRange) * plotHeight);
   const chartPoints = points.map((point, index) => {
