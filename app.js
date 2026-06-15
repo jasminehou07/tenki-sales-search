@@ -913,11 +913,13 @@ function sizeShopPickerMenu(picker, forceDirection = false) {
 }
 
 function sizeOpenShopPickerMenu() {
+  if (!els.shopProjectionControls) return;
   const picker = els.shopProjectionControls.querySelector(".shop-picker[open]");
   if (picker) sizeShopPickerMenu(picker);
 }
 
 function renderShopProjectionControls(pointSets, renderAgain, keepOpen = false) {
+  if (!els.shopProjectionControls) return;
   if (!pointSets.length) {
     els.shopProjectionControls.innerHTML = "";
     return;
@@ -1106,9 +1108,7 @@ async function update() {
     const monthlyDates = [...new Set(allTimeData.monthlyRows.map((row) => row.date))]
       .sort((a, b) => a.localeCompare(b));
     const baseRows = filterRows(allTimeData.summaryRows, { genre, shop });
-    const baseItems = filterRows(allTimeData.itemRows, { genre, shop });
     const trendRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
-    const shopProjectionRows = shopProjectionRowsForChart(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const summaryEstimateRows = filterEstimateRows(allTimeData.shopEstimateRows, monthlyDates, { genre, shop });
     const compareRows = compareDate && state.availableDates.has(compareDate)
       ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
@@ -1116,10 +1116,8 @@ async function update() {
 
     renderSummary(baseRows, summaryEstimateRows, allTimeData.rankRows, periodDates, genre);
     renderTrendChart(trendRows, monthlyDates, currentLabel, "monthly");
-    renderShopProjectionChart(shopProjectionRows, monthlyDates, currentLabel, "monthly");
     renderShopComparison(baseRows);
     renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
-    renderTopItems(baseItems);
     renderRankGapEstimates(allTimeData.rankRows, periodDates);
     renderEvents(periodDates);
     els.loadStatus.textContent = `Compact all-time view loaded for ${currentLabel}`;
@@ -1127,18 +1125,15 @@ async function update() {
   }
 
   const chartDates = trendDatesForPeriod(periodDates);
-  const [dateRows, itemRows, chartRows, shopEstimateRows, summaryEstimateRowsRaw, rankGapRows] = await Promise.all([
+  const [dateRows, chartRows, shopEstimateRows, summaryEstimateRowsRaw, rankGapRows] = await Promise.all([
     loadPeriodDates(periodDates),
-    loadPeriodItems(periodDates),
     loadPeriodDates(chartDates),
     loadPeriodShopEstimates(chartDates),
     loadPeriodShopEstimates(periodDates),
     loadPeriodRankGaps(periodDates)
   ]);
   const baseRows = filterRows(dateRows, { genre, shop });
-  const baseItems = filterRows(itemRows, { genre, shop });
   const trendRows = filterEstimateRows(shopEstimateRows, chartDates, { genre, shop });
-  const shopProjectionRows = shopProjectionRowsForChart(shopEstimateRows, chartDates, { genre, shop });
   const summaryEstimateRows = filterEstimateRows(summaryEstimateRowsRaw, periodDates, { genre, shop });
   const compareRows = compareDate && state.availableDates.has(compareDate)
     ? filterRows(await loadPeriodDates([compareDate]), { genre, shop })
@@ -1148,10 +1143,8 @@ async function update() {
   if (isRangeMode()) {
     renderTrendChart(trendRows, chartDates, currentLabel);
   }
-  renderShopProjectionChart(shopProjectionRows, chartDates, currentLabel);
   renderShopComparison(baseRows);
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
-  renderTopItems(baseItems);
   renderRankGapEstimates(rankGapRows, periodDates);
   renderEvents(periodDates);
   els.loadStatus.textContent = periodDates.length > 1
@@ -1194,9 +1187,9 @@ function renderEmptyState() {
   if (els.pageViewsMetricInterval) els.pageViewsMetricInterval.innerHTML = "";
   els.trendSubtitle.textContent = "Choose a day or period";
   els.trendChart.innerHTML = `<div class="empty">${isRangeMode() ? "Choose a start and end day" : "Choose a day"} to see the sales trend.</div>`;
-  els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
-  els.shopProjectionControls.innerHTML = "";
-  els.shopProjectionChart.innerHTML = `<div class="empty">Choose one genre or shop to see TENKi shop projections.</div>`;
+  if (els.shopProjectionSubtitle) els.shopProjectionSubtitle.textContent = "Choose one genre or shop";
+  if (els.shopProjectionControls) els.shopProjectionControls.innerHTML = "";
+  if (els.shopProjectionChart) els.shopProjectionChart.innerHTML = `<div class="empty">Choose one genre or shop to see TENKi shop projections.</div>`;
   const prompt = isRangeMode() ? "Choose a start and end day" : "Choose a day";
   if (els.shopCompareCount && els.shopCompareBody) {
     els.shopCompareCount.textContent = prompt;
@@ -1206,8 +1199,8 @@ function renderEmptyState() {
     els.dayCompareStatus.textContent = prompt;
     els.dayCompareBody.innerHTML = `<div class="empty">${prompt} to compare sales by date.</div>`;
   }
-  els.topItemsCount.textContent = prompt;
-  els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
+  if (els.topItemsCount) els.topItemsCount.textContent = prompt;
+  if (els.topItemsBody) els.topItemsBody.innerHTML = `<tr><td colspan="6">${prompt} to see top items.</td></tr>`;
   els.rankGapCount.textContent = prompt;
   els.rankGapChart.innerHTML = `<div class="empty">${prompt} to see rank estimates.</div>`;
   els.rankGapBody.innerHTML = `<tr><td colspan="4">${prompt} to see rank 1-20 estimates.</td></tr>`;
@@ -1275,20 +1268,17 @@ async function loadAllTimeData() {
   const [
     summaryText,
     monthlyText,
-    itemsText,
     shopEstimatesText,
     rankRowsText
   ] = await Promise.all([
     fetch(`${ALL_TIME_URL}/summary.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
-    fetch(`${ALL_TIME_URL}/items.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/shop_estimates_monthly.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text()),
     fetch(`${ALL_TIME_URL}/ranked_shops_latest.csv?v=${ALL_TIME_DATA_VERSION}`).then((response) => response.text())
   ]);
   state.allTimeData = {
     summaryRows: parseCsv(summaryText).map(allTimeSummaryFromCsv),
     monthlyRows: parseCsv(monthlyText).map(allTimeMonthlyFromCsv),
-    itemRows: parseCsv(itemsText).map(allTimeItemFromCsv),
     shopEstimateRows: parseCsv(shopEstimatesText).map(estimateFromCsv),
     rankRows: parseCsv(rankRowsText).map(rankGapFromCsv)
   };
@@ -1485,6 +1475,7 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
 }
 
 function renderShopProjectionChart(rows, dates, label, forcedGranularity = "", keepOpen = false) {
+  if (!els.shopProjectionChart || !els.shopProjectionControls || !els.shopProjectionSubtitle) return;
   if (!dates.length) {
     els.shopProjectionSubtitle.textContent = "Choose a day or period";
     els.shopProjectionControls.innerHTML = "";
@@ -1598,6 +1589,7 @@ function renderShopProjectionChart(rows, dates, label, forcedGranularity = "", k
 }
 
 function renderTopItems(rows) {
+  if (!els.topItemsCount || !els.topItemsBody) return;
   const itemTotals = new Map();
   rows.forEach((row) => {
     const key = `${row.item}|${row.shop}|${row.genre}`;
@@ -1961,7 +1953,9 @@ async function init() {
     await update();
   } catch (error) {
     els.loadStatus.textContent = "Could not load data files";
-    els.topItemsBody.innerHTML = `<tr><td colspan="6">Open this site through a local web server so the CSV files can load.</td></tr>`;
+    if (els.topItemsBody) {
+      els.topItemsBody.innerHTML = `<tr><td colspan="6">Open this site through a local web server so the CSV files can load.</td></tr>`;
+    }
     console.error(error);
   }
 }
