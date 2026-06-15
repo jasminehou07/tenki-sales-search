@@ -1383,8 +1383,13 @@ function renderTrendChart(rows, dates, label, forcedGranularity = "") {
   const showEventMarkers = !forcedGranularity && !isAllTimeView(dates);
   const buckets = aggregateEstimateTrendRows(rows, dates, granularity);
   const values = buckets.map((bucket) => bucket.sales);
-  const rawMin = Math.min(...values);
-  const rawMax = Math.max(...values, 1);
+  const intervalValues = buckets.flatMap((bucket) => [
+    bucket.salesLow || bucket.sales,
+    bucket.sales,
+    bucket.salesHigh || bucket.sales
+  ]);
+  const rawMin = Math.min(...intervalValues);
+  const rawMax = Math.max(...intervalValues, 1);
   const rawRange = Math.max(rawMax - rawMin, rawMax * 0.08, 1);
   const min = Math.max(0, rawMin - (rawRange * 0.22));
   const max = rawMax + (rawRange * 0.22);
