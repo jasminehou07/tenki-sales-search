@@ -2342,8 +2342,6 @@ function rankSummaryForMetric(rankRows, dates, genre) {
     row.genre === genre
   );
   if (!rows.length) return null;
-  const availableRankDates = new Set(rows.map((row) => row.date));
-  if (dates.length > 1 && availableRankDates.size < dates.length) return null;
   return rows.reduce((acc, row) => {
     acc.sales += row.sales;
     acc.salesLow += Number.isFinite(row.salesLow) ? row.salesLow : row.sales;
