@@ -63,6 +63,7 @@ const state = {
   loadedShopEstimateMonths: new Map(),
   loadedShopSummaryMonths: new Map(),
   loadedShopApiRanges: new Map(),
+  loadedTopItemsRanges: new Map(),
   loadedTrendEstimateMonths: new Map(),
   loadedGenreTrendRanges: new Map(),
   loadedRankGapMonths: new Map(),
@@ -1625,8 +1626,7 @@ async function loadPeriodShopEstimates(dates, options = {}) {
     if (!response.ok) throw new Error(`shop_genre_json_${response.status}`);
     const payload = await response.json();
     const dateSet = new Set(uniqueDates);
-    const rows = (payload.rows || []).map(estimateFromCsv).filter((row) => dateSet.has(row.date));
-    if (!rows.length) throw new Error("shop_genre_json_empty");
+    const rows = (payload.rows || []).map(estimateFromCsv).filter((row) => options.aggregate || dateSet.has(row.date));
     state.loadedShopApiRanges.set(rangeKey, rows);
     return rows;
   } catch (error) {
@@ -1656,7 +1656,7 @@ async function loadPeriodShopSummaries(dates, options = {}) {
     if (!response.ok) throw new Error(`shop_summary_json_${response.status}`);
     const payload = await response.json();
     const dateSet = new Set(uniqueDates);
-    const rows = (payload.rows || []).map(estimateFromCsv).filter((row) => dateSet.has(row.date));
+    const rows = (payload.rows || []).map(estimateFromCsv).filter((row) => options.aggregate || dateSet.has(row.date));
     state.loadedShopApiRanges.set(rangeKey, rows);
     return rows;
   } catch (error) {
@@ -1879,27 +1879,31 @@ async function update(updateId = ++state.updateRun) {
   const previousDates = previousEqualPeriodDates(periodDates);
   if (isShopMode()) {
     const allShops = shop === "all";
-    const [periodShopRows, chartShopRows, previousShopRows, periodRankSummaryRows, chartRankSummaryRows, previousRankSummaryRows, chartActualRows, topItemRows, rankItemRows, allTimeItemRows] = await Promise.all([
+    const [periodShopRows, chartShopRows, previousShopRows, topItemRows] = await Promise.all([
       allShops ? loadPeriodShopSummaries(periodDates, { aggregate: true }) : loadPeriodShopEstimates(periodDates, { aggregate: true }),
       allShops ? loadPeriodShopSummaries(chartDates) : loadPeriodShopEstimates(chartDates),
       previousDates.length ? (allShops ? loadPeriodShopSummaries(previousDates, { aggregate: true }) : loadPeriodShopEstimates(previousDates, { aggregate: true })) : Promise.resolve([]),
-      allShops ? Promise.resolve([]) : loadPeriodRankSummaries(periodDates),
-      allShops ? Promise.resolve([]) : loadPeriodRankSummaries(chartDates),
-      previousDates.length && !allShops ? loadPeriodRankSummaries(previousDates) : Promise.resolve([]),
-      allShops ? Promise.resolve([]) : loadPeriodDates(chartDates),
       loadTopItemsForSelection(periodDates, filters, 1000),
-      Promise.resolve([]),
-      Promise.resolve([])
     ]);
     if (updateId !== state.updateRun) return;
     const directSummaryRows = filterEstimateRows(periodShopRows, periodDates, filters);
     const directTrendRows = filterEstimateRows(chartShopRows, chartDates, filters);
     const directPreviousRows = filterEstimateRows(previousShopRows, previousDates, filters);
-    const summaryEstimateRows = withShopFallbackRows(directSummaryRows, shop, periodRankSummaryRows, periodDates);
-    const modelTrendRows = withShopFallbackRows(directTrendRows, shop, chartRankSummaryRows, chartDates);
-    const previousEstimateRows = withShopFallbackRows(directPreviousRows, shop, previousRankSummaryRows, previousDates);
-    const actualTrendRows = filterRows(chartActualRows, filters);
-    const trendRows = hybridActualAndModelRows(actualTrendRows, modelTrendRows, chartDates);
+    let summaryEstimateRows = directSummaryRows;
+    let modelTrendRows = directTrendRows;
+    let previousEstimateRows = directPreviousRows;
+    if (!allShops && (!summaryEstimateRows.length || !modelTrendRows.length)) {
+      const [periodRankSummaryRows, chartRankSummaryRows, previousRankSummaryRows] = await Promise.all([
+        !summaryEstimateRows.length ? loadPeriodRankSummaries(periodDates) : Promise.resolve([]),
+        !modelTrendRows.length ? loadPeriodRankSummaries(chartDates) : Promise.resolve([]),
+        previousDates.length && !previousEstimateRows.length ? loadPeriodRankSummaries(previousDates) : Promise.resolve([])
+      ]);
+      if (updateId !== state.updateRun) return;
+      summaryEstimateRows = withShopFallbackRows(summaryEstimateRows, shop, periodRankSummaryRows, periodDates);
+      modelTrendRows = withShopFallbackRows(modelTrendRows, shop, chartRankSummaryRows, chartDates);
+      previousEstimateRows = withShopFallbackRows(previousEstimateRows, shop, previousRankSummaryRows, previousDates);
+    }
+    const trendRows = modelTrendRows;
     const baseRows = [];
     const compareRows = [];
 
@@ -1909,8 +1913,8 @@ async function update(updateId = ++state.updateRun) {
     }
     renderShopComparison(baseRows);
     renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
-    renderShopGenreRankEstimates(summaryEstimateRows, periodDates, topItemRows, allTimeItemRows);
-    renderTopItems(topItemRows.length ? topItemRows : (rankItemRows.length ? rankItemRows : allTimeItemRows));
+    renderShopGenreRankEstimates(summaryEstimateRows, periodDates, topItemRows, topItemRows);
+    renderTopItems(topItemRows);
     renderTopMovers(shopMoverRows(summaryEstimateRows, shop), shopMoverRows(previousEstimateRows, shop), periodDates, previousDates);
     renderEvents(periodDates, trendRows);
     els.loadStatus.textContent = periodDates.length > 1
@@ -2124,6 +2128,15 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
   if (!dates.length) return [];
   if (isAllTimeView(dates) && filters.genre === "all" && filters.shop === "all") return [];
   const uniqueDates = [...new Set(dates)].sort((a, b) => a.localeCompare(b));
+  const cacheKey = [
+    isShopMode() ? "shop" : "genre",
+    uniqueDates[0],
+    uniqueDates[uniqueDates.length - 1],
+    filters.genre || "all",
+    filters.shop || "all",
+    Math.min(limit, 100)
+  ].join("|");
+  if (state.loadedTopItemsRanges.has(cacheKey)) return state.loadedTopItemsRanges.get(cacheKey);
   if (isShopMode()) {
     try {
       const itemParams = new URLSearchParams({
@@ -2136,7 +2149,9 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
       const itemResponse = await fetch(`${TOP_ITEMS_JSON_URL}?${itemParams.toString()}`);
       if (!itemResponse.ok) throw new Error(`top_items_json_${itemResponse.status}`);
       const payload = await itemResponse.json();
-      return (payload.rows || []).map(topItemFromJson);
+      const rows = (payload.rows || []).map(topItemFromJson);
+      state.loadedTopItemsRanges.set(cacheKey, rows);
+      return rows;
     } catch (error) {
       console.warn("Falling back to top shop/item summary", error);
     }
@@ -2152,7 +2167,9 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
     const jsonResponse = await fetch(`${TOP_SHOPS_JSON_URL}?${jsonParams.toString()}`);
     if (jsonResponse.ok) {
       const payload = await jsonResponse.json();
-      return (payload.rows || []).map(topShopFromJson);
+      const rows = (payload.rows || []).map(topShopFromJson);
+      state.loadedTopItemsRanges.set(cacheKey, rows);
+      return rows;
     }
   } catch (error) {
     console.warn("Falling back to top item CSV", error);
@@ -2166,7 +2183,9 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
   });
   const response = await fetch(`${TOP_ITEMS_URL}?${params.toString()}`);
   if (!response.ok) return [];
-  return parseCsv(await response.text()).map(itemFromCsv);
+  const rows = parseCsv(await response.text()).map(itemFromCsv);
+  state.loadedTopItemsRanges.set(cacheKey, rows);
+  return rows;
 }
 
 async function loadShopEstimateMonth(month) {
