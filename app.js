@@ -3407,6 +3407,33 @@ function renderRankGapEstimates(rows, dates, rankSummaryRows = [], directShopRow
   }
 
   const curveByRank = state.rankCurves.get(genre) || new Map();
+  const identityForRank = (rank) => {
+    const identityCounts = new Map();
+    filtered
+      .filter((row) => row.rank === rank && isRealShopId(row.shop))
+      .forEach((row) => {
+        const shop = String(row.shop);
+        const item = row.item ? String(row.item) : "";
+        const key = `${shop}|${item}`;
+        const current = identityCounts.get(key) || { shop, item, count: 0, sales: 0 };
+        current.count += item ? 2 : 1;
+        current.sales += row.sales || 0;
+        identityCounts.set(key, current);
+      });
+    return [...identityCounts.values()]
+      .sort((a, b) => b.count - a.count || b.sales - a.sales || a.shop.localeCompare(b.shop) || a.item.localeCompare(b.item))[0] || null;
+  };
+  const withRankIdentity = (row, rank) => {
+    if (!row) return row;
+    if (isRealShopId(row.shop) && row.item) return row;
+    const identity = identityForRank(rank);
+    if (!identity) return row;
+    return {
+      ...row,
+      shop: isRealShopId(row.shop) ? row.shop : identity.shop,
+      item: row.item || identity.item
+    };
+  };
   const rankedIdentityForRank = (rank) => {
     const identityCounts = new Map();
     filtered
@@ -3428,12 +3455,12 @@ function renderRankGapEstimates(rows, dates, rankSummaryRows = [], directShopRow
     const rankRows = filtered.filter((row) => row.rank === rank);
     if (genre === "all" || isPeriod) {
       const aggregated = aggregateRankRows(rankRows, rank);
-      if (aggregated) return aggregated;
+      if (aggregated) return withRankIdentity(aggregated, rank);
     }
     const sameDayKnown = rankRows.find((row) => row.source === "actual" && row.salesKnown);
-    if (sameDayKnown) return sameDayKnown;
+    if (sameDayKnown) return withRankIdentity(sameDayKnown, rank);
     const sameDayEstimate = rankRows.find((row) => row.source === "estimated" && row.salesKnown);
-    if (sameDayEstimate) return sameDayEstimate;
+    if (sameDayEstimate) return withRankIdentity(sameDayEstimate, rank);
 
     const curveSales = curveByRank.get(rank);
     if (Number.isFinite(curveSales)) {
