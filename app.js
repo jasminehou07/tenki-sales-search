@@ -284,7 +284,7 @@ function syncRankPanelCopy() {
   const description = document.querySelector(".rank-gap-heading .chart-description");
   const headers = document.querySelectorAll(".rank-gap-panel thead th");
   const allShops = isShopMode() && (els.shopSelect?.value || "all") === "all";
-  if (title) title.textContent = allShops ? "Sales by Shop" : isShopMode() ? "Sales by Genre" : "Sales by Item";
+  if (title) title.textContent = isShopMode() ? "Sales by Genre" : "Sales by Item";
   if (description) description.textContent = allShops
     ? "WMAPE: 49.7%"
     : isShopMode()
