@@ -2,7 +2,7 @@ const DATA_BASE_URL = (window.TENKI_DATA_BASE_URL || "https://172.237.20.132.ssl
 const API_BASE_URL = DATA_BASE_URL.replace(/\/api\/data$/, "/api");
 const dataUrl = (path) => `${DATA_BASE_URL}/${path.replace(/^\//, "")}`;
 const OPTIONS_URL = dataUrl("filter_options.csv?v=20260715-bilingual-genre-paths");
-const GENRE_NAMES_URL = dataUrl("genre_names.csv?v=20260715-bilingual-genre-paths");
+const GENRE_NAMES_URL = dataUrl("genre_names.csv?v=20260715-shop-genre-labels");
 const SHOP_OPTIONS_URL = dataUrl("shop_options.csv?v=20260623-shop-sort");
 const SHOP_GENRE_MIX_URL = dataUrl("shop_genre_mix.csv?v=20260623-shop-fallback");
 const EVENTS_URL = dataUrl("events.csv");
