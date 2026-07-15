@@ -2945,6 +2945,24 @@ function cleanRankDisplayRows(rows, genre) {
     }
   }
 
+  for (let index = 1; index < cleanedRows.length; index += 1) {
+    const previous = cleanedRows[index - 1];
+    const current = cleanedRows[index];
+    if (!previous?.sales || !current?.sales) continue;
+    const rank = current.rank || index + 1;
+    const maxRatio = rank <= 10 ? 0.975 : rank <= 30 ? 0.985 : 0.992;
+    const maxAllowed = previous.sales * maxRatio;
+    if (current.sales >= maxAllowed && maxAllowed > 0) {
+      const oldSales = current.sales;
+      current.sales = maxAllowed;
+      current.salesLow = Math.min(current.sales, (Number.isFinite(current.salesLow) ? current.salesLow : oldSales * 0.75) * (current.sales / Math.max(oldSales, 1)));
+      current.salesHigh = Math.max(current.sales, (Number.isFinite(current.salesHigh) ? current.salesHigh : oldSales * 1.25) * (current.sales / Math.max(oldSales, 1)));
+      current.source = current.source === "actual" ? "estimated" : current.source;
+      current.cleaned = true;
+      current.tooltipLabel = `${current.tooltipLabel || `Rank #${current.rank}`} - smoothed estimate`;
+    }
+  }
+
   return cleanedRows.map((row) => {
     const interval = centeredSalesInterval(row.sales, row.salesLow, row.salesHigh);
     return {
