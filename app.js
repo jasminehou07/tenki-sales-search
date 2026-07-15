@@ -1866,7 +1866,7 @@ async function update(updateId = ++state.updateRun) {
       renderShopGenreRankEstimates(shopEstimateRows, monthlyDates, rankItemRows, rankItemRows);
     } else {
       renderRankGapEstimates(allTimeData.rankRows, monthlyDates, allTimeData.rankSummaryRows, shopEstimateSourceRows, rankItemRows, rankItemRows);
-      renderRankProjection([], periodDates);
+      renderGenreSalesChart(filterEstimateRows(trendRows, monthlyDates, filters), monthlyDates, currentLabel, "monthly");
     }
     renderTopItems(isShopMode() ? rankItemRows : topItemRows);
     renderTopMovers([], [], monthlyDates, []);
@@ -1923,7 +1923,6 @@ async function update(updateId = ++state.updateRun) {
     return;
   }
 
-  const rankProjectionDates = trendDatesForPeriod(periodDates);
   const [rankGapRows, previousRankGapRows, rankSummaryRows, topItemRows, previousTopItemRows, rankItemRows, allTimeItemRows] = await Promise.all([
     loadPeriodRankGaps(genre, periodDates, { aggregate: true }),
     previousDates.length ? loadPeriodRankGaps(genre, previousDates, { aggregate: true }) : Promise.resolve([]),
@@ -1952,17 +1951,9 @@ async function update(updateId = ++state.updateRun) {
   renderDayComparison(baseRows, compareRows, currentLabel, compareDate);
   renderRankGapEstimates(displayRankGapRows, periodDates, rankSummaryRows, [], rankItemRows, allTimeItemRows);
   if (isRangeMode()) {
-    if (els.rankProjectionSubtitle) els.rankProjectionSubtitle.textContent = "Loading rank projection...";
-    if (els.rankProjectionChart) els.rankProjectionChart.innerHTML = `<div class="empty">Loading rank projection...</div>`;
-    loadPeriodRankGaps(genre, rankProjectionDates).then((rankProjectionRows) => {
-      if (updateId !== state.updateRun) return;
-      renderRankProjection(rankProjectionRows, rankProjectionDates);
-    }).catch(() => {
-      if (updateId !== state.updateRun || !els.rankProjectionChart) return;
-      els.rankProjectionChart.innerHTML = `<div class="empty">No rank projection found for this period.</div>`;
-    });
+    renderGenreSalesChart(filterEstimateRows(trendRows, periodDates, filters), periodDates, currentLabel);
   } else {
-    renderRankProjection([], rankProjectionDates);
+    renderGenreSalesChart([], periodDates, currentLabel);
   }
   renderTopItems(topShopRows);
   renderTopMovers(
@@ -2088,7 +2079,7 @@ function renderEmptyState() {
   els.rankGapBody.innerHTML = `<tr><td colspan="5">${prompt} to see rank 1-${RANK_DISPLAY_LIMIT} estimates.</td></tr>`;
   if (els.rankProjectionSubtitle) els.rankProjectionSubtitle.textContent = prompt;
   if (els.rankProjectionChart) {
-    els.rankProjectionChart.innerHTML = `<div class="empty">${prompt} to see a rank projection.</div>`;
+    els.rankProjectionChart.innerHTML = `<div class="empty">${prompt} to see genre sales.</div>`;
   }
   if (els.moversCount) els.moversCount.textContent = prompt;
   if (els.moversList) els.moversList.innerHTML = `<div class="empty">${prompt} to see top movers.</div>`;
@@ -2975,6 +2966,114 @@ function cleanRankDisplayRows(rows, genre) {
 
 function rankGenreLabel(genre) {
   return genre === "all" ? "All product genres" : genreLabel(genre);
+}
+
+function renderGenreSalesChart(rows, dates, label, forcedGranularity = "") {
+  if (!els.rankProjectionChart || !els.rankProjectionSubtitle) return;
+  if (!dates.length || !isRangeMode()) {
+    els.rankProjectionSubtitle.textContent = "Choose a date range";
+    els.rankProjectionChart.innerHTML = `<div class="empty">Choose a date range to see genre sales.</div>`;
+    return;
+  }
+
+  const granularity = forcedGranularity || "daily";
+  if (!rows.length) {
+    els.rankProjectionSubtitle.textContent = "No model estimate found";
+    els.rankProjectionChart.innerHTML = `<div class="empty">No genre sales estimate found for this period.</div>`;
+    return;
+  }
+
+  const genre = els.genreSelect.value || "all";
+  const buckets = aggregateEstimateTrendRows(rows, dates, granularity);
+  const pointsData = buckets.filter((bucket) => bucket.rowCount > 0);
+  if (!pointsData.length) {
+    els.rankProjectionSubtitle.textContent = "No model estimate found";
+    els.rankProjectionChart.innerHTML = `<div class="empty">No genre sales estimate found for this period.</div>`;
+    return;
+  }
+
+  const width = 1040;
+  const height = 230;
+  const padX = 54;
+  const padTop = 22;
+  const padBottom = 44;
+  const plotWidth = width - (padX * 2);
+  const plotHeight = height - padTop - padBottom;
+  const intervalValues = pointsData.flatMap((point) => [
+    point.sales,
+    point.salesLow || point.sales,
+    point.salesHigh || point.sales
+  ].filter((value) => Number.isFinite(value) && value >= 0));
+  const rawMin = Math.min(...intervalValues);
+  const rawMax = Math.max(...intervalValues, 1);
+  const rawRange = Math.max(rawMax - rawMin, rawMax * 0.03, 1);
+  const min = Math.max(0, rawMin - (rawRange * 0.12));
+  const max = rawMax * 1.3;
+  const scaleRange = Math.max(max - min, 1);
+  const yForValue = (value) => padTop + plotHeight - (((Math.min(max, Math.max(min, value)) - min) / scaleRange) * plotHeight);
+  const points = pointsData.map((bucket, index) => {
+    const x = pointsData.length === 1 ? width / 2 : padX + (plotWidth * index) / (pointsData.length - 1);
+    return {
+      ...bucket,
+      x,
+      y: yForValue(bucket.sales),
+      value: bucket.sales,
+      low: bucket.salesLow || bucket.sales,
+      high: bucket.salesHigh || bucket.sales,
+      source: bucket.actualCount > 0 ? "actual" : "model"
+    };
+  });
+  const highPoints = points.map((point) => `${point.x.toFixed(1)},${yForValue(point.high).toFixed(1)}`);
+  const lowPoints = points.slice().reverse().map((point) => `${point.x.toFixed(1)},${yForValue(point.low).toFixed(1)}`);
+  const intervalArea = [...highPoints, ...lowPoints].join(" ");
+  const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: min + (scaleRange * ratio),
+    y: padTop + plotHeight - (plotHeight * ratio)
+  }));
+  const ticks = points.filter((_, index) => (
+    index === 0 || index === points.length - 1 || index === Math.floor((points.length - 1) / 2)
+  ));
+
+  els.rankProjectionSubtitle.textContent = `${rankGenreLabel(genre)} total sales for ${label}`;
+  els.rankProjectionChart.innerHTML = `
+    <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Genre sales chart">
+      ${yTicks.map((tick) => `
+        <line x1="${padX}" y1="${tick.y.toFixed(1)}" x2="${width - padX}" y2="${tick.y.toFixed(1)}" class="trend-grid"></line>
+        <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
+      `).join("")}
+      <polygon points="${intervalArea}" class="trend-interval-area"></polygon>
+      <polyline points="${line}" class="trend-line model"></polyline>
+      ${points.map((point) => {
+        const promotions = eventsForDates(point.dates || []);
+        const tooltip = escapeHtml([
+          `${point.key} - ${rankGenreLabel(genre)}`,
+          "Total genre sales",
+          `Exact: ${yen.format(point.value)}`,
+          `95% estimate: ${yen.format(point.low)} to ${yen.format(point.high)}`,
+          promotions.length ? `Promotion: ${promotions.join(", ")}` : "Promotion: No promotion listed"
+        ].join("\n"));
+        return `
+          <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="2.5" class="trend-point${promotions.length ? " has-event" : ""}"></circle>
+          <circle
+            cx="${point.x.toFixed(1)}"
+            cy="${point.y.toFixed(1)}"
+            r="9"
+            fill="transparent"
+            stroke="transparent"
+            tabindex="0"
+            class="trend-hover-target"
+            data-tooltip="${tooltip}">
+          </circle>
+        `;
+      }).join("")}
+      ${ticks.map((point) => `
+        <text x="${point.x.toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.label}</text>
+      `).join("")}
+    </svg>
+    <div class="trend-tooltip" hidden></div>
+  `;
+  attachTrendTooltipHandlers(els.rankProjectionChart);
 }
 
 function renderRankProjection(rows, dates) {
