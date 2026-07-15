@@ -293,7 +293,7 @@ function syncRankPanelCopy() {
   const tableHeaders = allShops
     ? ["Rank", "Shop", "Top Item ID", "Sales", "Model"]
     : isShopMode()
-      ? ["Rank", "Genre", "Item ID", "Sales", "Model"]
+      ? ["Rank", "Genre", "Units sold", "Sales", "Model"]
       : ["Rank", "Item ID", "Shop ID", "Sales", "Model"];
   headers.forEach((header, index) => {
     header.textContent = tableHeaders[index] || header.textContent;
@@ -3794,7 +3794,7 @@ function renderShopGenreRankEstimates(rows, dates, periodItemRows = [], allTimeI
     <tr class="estimated-rank-row">
       <td>#${whole.format(row.rank)}</td>
       <td>${row.label}</td>
-      <td>${itemIdForRankRow(row, periodItemRows, allTimeItemRows)}</td>
+      <td>${whole.format(row.units || 0)}</td>
       <td>${yen.format(row.sales)}</td>
       <td><span class="source-pill estimated">Model estimate</span></td>
     </tr>
