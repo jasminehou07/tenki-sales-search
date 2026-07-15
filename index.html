@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tenki Japan Sales Search</title>
+  <script>
+    if (window.location.protocol === "file:") {
+      window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css?v=20260715-readable-category-paths">
+</head>
+<body class="range-mode">
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Tenki Japan</p>
+      <h1>Sales Search</h1>
+    </div>
+    <div class="status" id="loadStatus">Loading sales data...</div>
+  </header>
+
+  <main>
+    <section class="filters" aria-label="Sales filters">
+      <div class="view-tabs" role="tablist" aria-label="Search view">
+        <button id="genreViewButton" class="view-tab active" type="button" role="tab" aria-selected="true" data-view-mode="genre" disabled>By genre</button>
+        <button id="shopViewButton" class="view-tab" type="button" role="tab" aria-selected="false" data-view-mode="shop" disabled>By shop</button>
+      </div>
+      <label id="genreFilterLabel" class="genre-filter-control">
+        Product genre
+        <select id="genreSelect" disabled>
+          <option value="all">All product genres</option>
+        </select>
+      </label>
+      <div id="selectedGenrePath" class="selected-filter-path" hidden></div>
+      <label id="shopFilterLabel" class="shop-filter-control" hidden>
+        Shop
+        <select id="shopSelect" disabled>
+          <option value="all">All shops</option>
+        </select>
+      </label>
+      <div class="date-pill-row">
+        <label class="date-mode-label">
+          <span class="sr-only">Search type</span>
+          <select id="dateModeSelect" class="date-pill date-mode-select" disabled>
+            <option value="day">One day</option>
+            <option value="range">Date range</option>
+          </select>
+        </label>
+        <div class="date-picker-shell">
+          <button id="dateRangeButton" class="date-pill date-range-pill" type="button" disabled aria-expanded="false">
+            <span id="dateRangeCaption">Date range</span>
+            <strong id="dateRangeLabel">Latest day</strong>
+            <span class="chevron">v</span>
+          </button>
+          <div id="datePopover" class="date-popover" hidden>
+            <div class="preset-list" aria-label="Date range presets">
+              <button class="date-preset-button" type="button" data-preset="today">Latest day</button>
+              <button class="date-preset-button" type="button" data-preset="7">Last 7 days</button>
+              <button class="date-preset-button" type="button" data-preset="28">Last 4 weeks</button>
+              <button class="date-preset-button" type="button" data-preset="183">Last 6 months</button>
+              <button class="date-preset-button" type="button" data-preset="365">Last 12 months</button>
+              <button class="date-preset-button" type="button" data-preset="mtd">Month to date</button>
+              <button class="date-preset-button" type="button" data-preset="ytd">Year to date</button>
+              <button class="date-preset-button" type="button" data-preset="all">All time</button>
+            </div>
+            <div class="date-popover-main">
+              <div class="calendar-controls" aria-label="Calendar date selection">
+                <label>
+                  Start
+                  <input id="startDateInput" type="date" disabled>
+                </label>
+                <label class="end-date-field">
+                  End
+                  <input id="endDateInput" type="date" disabled>
+                </label>
+              </div>
+              <div id="dateCalendarGrid" class="date-calendar-grid" aria-label="Calendar range picker"></div>
+              <div class="date-apply-row">
+                <button id="clearDateButton" type="button" disabled>Clear</button>
+                <button id="applyDateButton" class="primary-button" type="button" disabled>Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="date-stepper" aria-label="Quick date navigation">
+          <button id="prevDateButton" class="date-pill date-step-button" type="button" disabled aria-label="Previous day">&lt;</button>
+          <button id="nextDateButton" class="date-pill date-step-button" type="button" disabled aria-label="Next day">&gt;</button>
+        </div>
+        <button id="resetButton" class="date-pill reset-pill" type="button" disabled>Reset</button>
+        <input id="granularitySelect" type="hidden" value="daily">
+      </div>
+      <div class="date-filter-grid legacy-date-controls" aria-hidden="true">
+        <label>
+          Year
+          <select id="yearSelect" disabled tabindex="-1">
+            <option value="">Year</option>
+          </select>
+        </label>
+        <label>
+          Month
+          <select id="monthSelect" disabled tabindex="-1">
+            <option value="">Month</option>
+          </select>
+        </label>
+        <label>
+          Day
+          <select id="daySelect" disabled tabindex="-1">
+            <option value="">Day</option>
+          </select>
+        </label>
+        <label class="range-filter">
+          End year
+          <select id="endYearSelect" disabled tabindex="-1">
+            <option value="">Year</option>
+          </select>
+        </label>
+        <label class="range-filter">
+          End month
+          <select id="endMonthSelect" disabled tabindex="-1">
+            <option value="">Month</option>
+          </select>
+        </label>
+        <label class="range-filter">
+          End day
+          <select id="endDaySelect" disabled tabindex="-1">
+            <option value="">Day</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Search result totals">
+      <article>
+        <span id="salesMetricLabel">Total sales</span>
+        <strong id="salesMetric">-</strong>
+        <p class="metric-note">WMAPE: 28.7%</p>
+        <div id="salesMetricInterval" class="metric-interval" aria-label="Total sales estimate interval"></div>
+      </article>
+      <article>
+        <span id="unitsMetricLabel">Units sold</span>
+        <strong id="unitsMetric">-</strong>
+        <p class="metric-note">WMAPE: 17.4%</p>
+        <div id="unitsMetricInterval" class="metric-interval" aria-label="Units sold estimate interval"></div>
+      </article>
+    </section>
+
+    <section class="source-note-panel" aria-label="Data source guide">
+      <span><i class="source-dot estimated"></i>Model estimate means sales estimated for ranked items without known sales.</span>
+      <span><i class="source-dot actual"></i>Known value means TENKI item sales are available for that ranked item.</span>
+    </section>
+
+    <section class="workspace">
+      <div class="panel rank-gap-panel">
+        <div class="panel-heading rank-gap-heading">
+          <div>
+            <h2>Sales by Item</h2>
+            <p class="chart-description">WMAPE: 28.7%</p>
+          </div>
+          <span id="rankGapCount">Choose one genre</span>
+        </div>
+        <div id="rankGapChart" class="rank-gap-chart">
+          <div class="empty">Choose one product genre to see rank estimates.</div>
+        </div>
+        <div class="table-wrap rank-gap-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Item ID</th>
+                <th>Shop ID</th>
+                <th>Sales</th>
+                <th>Model</th>
+              </tr>
+            </thead>
+            <tbody id="rankGapBody">
+              <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <section class="panel rank-projection-panel" aria-label="Rank projection">
+        <div class="panel-heading">
+          <div>
+            <h2>Rank Projection</h2>
+            <span id="rankProjectionSubtitle">Choose one genre and rank</span>
+            <p class="chart-description">WMAPE: 28.7%</p>
+          </div>
+          <label class="rank-projection-control">
+            Rank
+            <select id="rankProjectionSelect">
+              <option value="1">#1</option>
+              <option value="2">#2</option>
+              <option value="3">#3</option>
+              <option value="4">#4</option>
+              <option value="5">#5</option>
+              <option value="6">#6</option>
+              <option value="7">#7</option>
+              <option value="8">#8</option>
+              <option value="9">#9</option>
+              <option value="10">#10</option>
+              <option value="11">#11</option>
+              <option value="12">#12</option>
+              <option value="13">#13</option>
+              <option value="14">#14</option>
+              <option value="15">#15</option>
+              <option value="16">#16</option>
+              <option value="17">#17</option>
+              <option value="18">#18</option>
+              <option value="19">#19</option>
+              <option value="20">#20</option>
+            </select>
+          </label>
+        </div>
+        <div class="trend-legend" aria-label="Rank projection legend">
+          <span><i class="legend-line estimate-line"></i>Rank estimate</span>
+          <span><i class="legend-band"></i>95% estimate interval</span>
+        </div>
+        <div id="rankProjectionChart" class="trend-chart">
+          <div class="empty">Choose one product genre to see a rank projection.</div>
+        </div>
+      </section>
+
+      <section class="panel top-items-panel" aria-label="Top shops">
+        <div class="panel-heading">
+          <div>
+            <h2>Top Shops</h2>
+            <p class="chart-description">Shops summarized from the Sales by Item rows for the selected date, genre, or shop.</p>
+          </div>
+          <span id="topItemsCount">Choose dates</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Shop ID</th>
+                <th>Total shop sales</th>
+                <th>% of total sales</th>
+                <th>Rank rows</th>
+                <th>Top item</th>
+              </tr>
+            </thead>
+            <tbody id="topItemsBody">
+              <tr><td colspan="6">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </section>
+
+    <section class="panel movers-panel" aria-label="Top movers">
+      <div class="panel-heading">
+        <div>
+          <h2>Top Movers</h2>
+          <p class="chart-description">Compared with the previous equal-length period.</p>
+        </div>
+        <span id="moversCount">Choose dates</span>
+      </div>
+      <div id="moversList" class="movers-grid">
+        <div class="empty">Choose dates to see what rose or fell the most.</div>
+      </div>
+    </section>
+
+    <section class="panel event-panel">
+      <div class="panel-heading">
+        <div>
+          <h2 id="eventsTitle">Promotion Impact</h2>
+          <p class="chart-description">Average sales during listed promotions in the selected period.</p>
+        </div>
+        <span id="eventCount">0 events</span>
+      </div>
+      <div id="eventList" class="event-list"></div>
+    </section>
+  </main>
+
+  <script src="app.js?v=20260715-centered-clean-ci"></script>
+</body>
+</html>
