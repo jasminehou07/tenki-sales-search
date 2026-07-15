@@ -1300,6 +1300,47 @@ function trendLineSegments(points) {
   });
 }
 
+function smoothedVisualValues(points, valueKey = "value") {
+  if (points.length < 4) return points.map((point) => point[valueKey] || 0);
+  return points.map((point, index) => {
+    const weights = [
+      { offset: -2, weight: 1 },
+      { offset: -1, weight: 2 },
+      { offset: 0, weight: 4 },
+      { offset: 1, weight: 2 },
+      { offset: 2, weight: 1 }
+    ];
+    let weighted = 0;
+    let totalWeight = 0;
+    weights.forEach(({ offset, weight }) => {
+      const neighbor = points[index + offset];
+      if (!neighbor) return;
+      weighted += (neighbor[valueKey] || 0) * weight;
+      totalWeight += weight;
+    });
+    const smoothed = totalWeight > 0 ? weighted / totalWeight : point[valueKey] || 0;
+    return ((point[valueKey] || 0) * 0.55) + (smoothed * 0.45);
+  });
+}
+
+function curvedSvgPath(points) {
+  if (!points.length) return "";
+  if (points.length === 1) return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  const path = [`M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`];
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const previous = points[Math.max(0, index - 1)];
+    const current = points[index];
+    const next = points[index + 1];
+    const nextNext = points[Math.min(points.length - 1, index + 2)];
+    const control1X = current.x + ((next.x - previous.x) / 6);
+    const control1Y = current.y + ((next.y - previous.y) / 6);
+    const control2X = next.x - ((nextNext.x - current.x) / 6);
+    const control2Y = next.y - ((nextNext.y - current.y) / 6);
+    path.push(`C ${control1X.toFixed(1)} ${control1Y.toFixed(1)}, ${control2X.toFixed(1)} ${control2Y.toFixed(1)}, ${next.x.toFixed(1)} ${next.y.toFixed(1)}`);
+  }
+  return path.join(" ");
+}
+
 function buildShopProjectionSeries(rows, dates, granularity) {
   if (!rows.length) return [];
   const topShops = new Map();
@@ -3021,10 +3062,20 @@ function renderGenreSalesChart(rows, dates, label, forcedGranularity = "") {
       source: bucket.actualCount > 0 ? "actual" : "model"
     };
   });
-  const highPoints = points.map((point) => `${point.x.toFixed(1)},${yForValue(point.high).toFixed(1)}`);
-  const lowPoints = points.slice().reverse().map((point) => `${point.x.toFixed(1)},${yForValue(point.low).toFixed(1)}`);
+  const visualValues = smoothedVisualValues(points, "value");
+  const visualLowValues = smoothedVisualValues(points, "low");
+  const visualHighValues = smoothedVisualValues(points, "high");
+  const visualPoints = points.map((point, index) => ({
+    ...point,
+    visualValue: visualValues[index],
+    visualLow: Math.min(visualLowValues[index], visualValues[index]),
+    visualHigh: Math.max(visualHighValues[index], visualValues[index]),
+    y: yForValue(visualValues[index])
+  }));
+  const highPoints = visualPoints.map((point) => `${point.x.toFixed(1)},${yForValue(point.visualHigh).toFixed(1)}`);
+  const lowPoints = visualPoints.slice().reverse().map((point) => `${point.x.toFixed(1)},${yForValue(point.visualLow).toFixed(1)}`);
   const intervalArea = [...highPoints, ...lowPoints].join(" ");
-  const line = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const line = curvedSvgPath(visualPoints);
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
     value: min + (scaleRange * ratio),
     y: padTop + plotHeight - (plotHeight * ratio)
@@ -3041,8 +3092,8 @@ function renderGenreSalesChart(rows, dates, label, forcedGranularity = "") {
         <text x="${padX - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${compactYen(tick.value)}</text>
       `).join("")}
       <polygon points="${intervalArea}" class="trend-interval-area"></polygon>
-      <polyline points="${line}" class="trend-line model"></polyline>
-      ${points.map((point) => {
+      <path d="${line}" class="trend-line model"></path>
+      ${visualPoints.map((point) => {
         const promotions = eventsForDates(point.dates || []);
         const tooltip = escapeHtml([
           `${point.key} - ${rankGenreLabel(genre)}`,
