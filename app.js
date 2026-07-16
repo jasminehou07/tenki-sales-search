@@ -169,7 +169,14 @@ const els = {
   verificationGenreSelect: document.getElementById("verificationGenreSelect"),
   verificationShopLabel: document.getElementById("verificationShopLabel"),
   verificationShopSelect: document.getElementById("verificationShopSelect"),
-  verificationDetails: document.getElementById("verificationDetails")
+  verificationDetails: document.getElementById("verificationDetails"),
+  verificationDateModeSelect: document.getElementById("verificationDateModeSelect"),
+  verificationStartDateInput: document.getElementById("verificationStartDateInput"),
+  verificationEndDateLabel: document.getElementById("verificationEndDateLabel"),
+  verificationEndDateInput: document.getElementById("verificationEndDateInput"),
+  verificationChartDescription: document.getElementById("verificationChartDescription"),
+  verificationChartStatus: document.getElementById("verificationChartStatus"),
+  verificationErrorChart: document.getElementById("verificationErrorChart")
 };
 
 const yen = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
@@ -501,6 +508,12 @@ function buildDateControls(dateRows) {
     input.min = state.firstDate;
     input.max = state.latestDate;
   });
+  [els.verificationStartDateInput, els.verificationEndDateInput].filter(Boolean).forEach((input) => {
+    input.min = state.firstDate;
+    input.max = state.latestDate;
+    input.value = state.latestDate;
+  });
+  syncVerificationDateInputs();
 }
 
 function refreshMonthOptions(keepValue = true, chooseFirst = false) {
@@ -1052,6 +1065,128 @@ function selectedVerificationLabel(type, id) {
   return "Overall models";
 }
 
+function isVerificationRangeMode() {
+  return (els.verificationDateModeSelect?.value || "day") === "range";
+}
+
+function syncVerificationDateInputs() {
+  if (!els.verificationStartDateInput || !els.verificationEndDateInput || !state.latestDate) return;
+  [els.verificationStartDateInput, els.verificationEndDateInput].forEach((input) => {
+    input.min = state.firstDate;
+    input.max = state.latestDate;
+  });
+  if (!els.verificationStartDateInput.value) els.verificationStartDateInput.value = state.latestDate;
+  if (!els.verificationEndDateInput.value) els.verificationEndDateInput.value = state.latestDate;
+  if (els.verificationEndDateLabel) els.verificationEndDateLabel.hidden = !isVerificationRangeMode();
+  if (!isVerificationRangeMode()) els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+}
+
+function selectedVerificationDates() {
+  if (!state.dates?.length) return [];
+  syncVerificationDateInputs();
+  const start = els.verificationStartDateInput?.value || state.latestDate;
+  const end = isVerificationRangeMode() ? (els.verificationEndDateInput?.value || start) : start;
+  const rangeStart = start <= end ? start : end;
+  const rangeEnd = start <= end ? end : start;
+  return state.dates
+    .filter((date) => date >= rangeStart && date <= rangeEnd)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function validationMetricDate(row) {
+  const value = row.date || row.validationDate || row.validation_date || row.evaluatedDate || row.evaluated_date || "";
+  return String(value).slice(0, 10);
+}
+
+function dailyValidationRowsForSelection(type, id, dates) {
+  if (!Array.isArray(state.validationMetrics) || !state.validationMetrics.length) return [];
+  const dateSet = new Set(dates);
+  return state.validationMetrics.filter((row) => {
+    const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
+    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
+    const rowDate = validationMetricDate(row);
+    return rowType === type && (rowId === String(id) || rowId === "all") && rowDate && dateSet.has(rowDate);
+  });
+}
+
+function verificationBaseMetric(rows, type) {
+  const preferred = rows.find((row) => /sales/i.test(row.modelName || row.model_name || "")) || rows[0];
+  if (preferred) return Number(preferred.metricValue ?? preferred.metric_value);
+  const fallback = DEFAULT_VALIDATION_METRICS.find((row) => row.entityType === type) || DEFAULT_VALIDATION_METRICS[0];
+  return fallback.metricValue;
+}
+
+function renderVerificationErrorChart(rows, type, entityId) {
+  if (!els.verificationErrorChart) return;
+  const dates = selectedVerificationDates();
+  if (!dates.length) {
+    els.verificationErrorChart.innerHTML = `<div class="empty">Choose dates to see the validation error graph.</div>`;
+    if (els.verificationChartDescription) els.verificationChartDescription.textContent = "No dates selected.";
+    if (els.verificationChartStatus) els.verificationChartStatus.textContent = "No dates";
+    return;
+  }
+
+  const dailyRows = dailyValidationRowsForSelection(type, entityId, dates);
+  const hasDailyMetrics = dailyRows.length > 0;
+  const dailyByDate = new Map(dailyRows.map((row) => [validationMetricDate(row), Number(row.metricValue ?? row.metric_value)]));
+  const baseMetric = verificationBaseMetric(rows, type);
+  const points = dates.map((date) => ({
+    date,
+    value: dailyByDate.get(date) ?? baseMetric,
+    source: dailyByDate.has(date) ? "daily validation" : "saved WMAPE"
+  }));
+  const validValues = points.map((point) => point.value).filter((value) => Number.isFinite(value));
+  if (!validValues.length) {
+    els.verificationErrorChart.innerHTML = `<div class="empty">No validation WMAPE is available for this selection.</div>`;
+    return;
+  }
+
+  const width = 860;
+  const height = 260;
+  const padLeft = 58;
+  const padRight = 22;
+  const padTop = 20;
+  const padBottom = 42;
+  const maxValue = Math.max(...validValues, 1) * 1.3;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+  const xFor = (index) => padLeft + (points.length <= 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth);
+  const yFor = (value) => padTop + plotHeight - (value / maxValue) * plotHeight;
+  const line = points.map((point, index) => `${xFor(index).toFixed(1)},${yFor(point.value).toFixed(1)}`).join(" ");
+  const ticks = [0, maxValue / 2, maxValue].map((value) => ({
+    value,
+    y: yFor(value)
+  }));
+  const visibleTicks = points
+    .map((point, index) => ({ point, index }))
+    .filter(({ index }) => points.length <= 8 || index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 5) === 0);
+  const statusText = hasDailyMetrics ? `${whole.format(dailyRows.length)} daily errors` : "Reference WMAPE";
+  if (els.verificationChartStatus) els.verificationChartStatus.textContent = statusText;
+  if (els.verificationChartDescription) {
+    els.verificationChartDescription.textContent = hasDailyMetrics
+      ? "Daily hidden-test WMAPE for the selected model and dates."
+      : "No day-by-day validation errors are saved yet, so this shows the current saved WMAPE as a reference line.";
+  }
+
+  els.verificationErrorChart.innerHTML = `
+    <svg class="verification-error-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Validation error over selected period">
+      ${ticks.map((tick) => `
+        <line x1="${padLeft}" y1="${tick.y.toFixed(1)}" x2="${width - padRight}" y2="${tick.y.toFixed(1)}" class="trend-grid"></line>
+        <text x="${padLeft - 8}" y="${(tick.y + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${tick.value.toFixed(1)}%</text>
+      `).join("")}
+      <polyline points="${line}" class="verification-error-line"></polyline>
+      ${points.map((point, index) => `
+        <circle cx="${xFor(index).toFixed(1)}" cy="${yFor(point.value).toFixed(1)}" r="3" class="verification-error-point">
+          <title>${point.date}: ${metricValueText(point.value)} WMAPE (${point.source})</title>
+        </circle>
+      `).join("")}
+      ${visibleTicks.map(({ point, index }) => `
+        <text x="${xFor(index).toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.date.slice(5)}</text>
+      `).join("")}
+    </svg>
+  `;
+}
+
 function renderModelVerification() {
   if (!els.verificationDetails) return;
   const type = els.verificationTypeSelect?.value || "genre";
@@ -1103,6 +1238,8 @@ function renderModelVerification() {
       }).join("")}
     </div>
   `;
+  syncVerificationDateInputs();
+  renderVerificationErrorChart(metricCards, type === "overall" ? "genre" : type, entityId);
 }
 
 async function loadValidationMetrics() {
@@ -1118,7 +1255,8 @@ async function loadValidationMetrics() {
       metricName: row.metric_name || row.metricName || "WMAPE",
       metricValue: Number(row.metric_value ?? row.metricValue),
       sampleSize: Number(row.sample_size ?? row.sampleSize) || null,
-      description: row.description || ""
+      description: row.description || "",
+      date: row.date || row.validation_date || row.validationDate || row.evaluated_date || row.evaluatedDate || ""
     })).filter((row) => Number.isFinite(row.metricValue)) || null;
   } catch (error) {
     state.validationMetrics = null;
@@ -4555,6 +4693,15 @@ async function init() {
 
 [els.verificationTypeSelect, els.verificationGenreSelect, els.verificationShopSelect].filter(Boolean).forEach((el) => {
   el.addEventListener("input", renderModelVerification);
+});
+
+[els.verificationDateModeSelect, els.verificationStartDateInput, els.verificationEndDateInput].filter(Boolean).forEach((el) => {
+  el.addEventListener("input", () => {
+    if (el === els.verificationDateModeSelect && !isVerificationRangeMode()) {
+      els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+    }
+    renderModelVerification();
+  });
 });
 
 els.rankProjectionSelect?.addEventListener("input", () => requestUpdate());

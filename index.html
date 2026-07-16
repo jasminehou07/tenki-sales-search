@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260716-verification-selection-feedback">
+  <link rel="stylesheet" href="styles.css?v=20260716-verification-error-chart">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -320,6 +320,35 @@
         </label>
       </div>
       <div id="verificationDetails" class="verification-details"></div>
+      <div class="verification-date-controls" aria-label="Verification date selection">
+        <label>
+          Date type
+          <select id="verificationDateModeSelect">
+            <option value="day">One day</option>
+            <option value="range">Date range</option>
+          </select>
+        </label>
+        <label>
+          Start date
+          <input id="verificationStartDateInput" type="date">
+        </label>
+        <label id="verificationEndDateLabel">
+          End date
+          <input id="verificationEndDateInput" type="date">
+        </label>
+      </div>
+      <div class="verification-chart-wrap">
+        <div class="panel-heading compact-heading">
+          <div>
+            <h2>Error Over Selected Period</h2>
+            <p id="verificationChartDescription" class="chart-description">Choose a range to see validation error.</p>
+          </div>
+          <span id="verificationChartStatus">WMAPE</span>
+        </div>
+        <div id="verificationErrorChart" class="verification-error-chart">
+          <div class="empty">Choose dates to see the validation error graph.</div>
+        </div>
+      </div>
     </section>
 
     <section class="panel verification-panel" aria-label="How to read validation">
@@ -337,6 +366,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260716-verification-selection-feedback"></script>
+  <script src="app.js?v=20260716-verification-error-chart"></script>
 </body>
 </html>

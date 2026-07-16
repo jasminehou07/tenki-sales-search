@@ -218,7 +218,8 @@ main {
   padding: 0 16px;
 }
 
-.verification-controls label {
+.verification-controls label,
+.verification-date-controls label {
   display: grid;
   gap: 6px;
   color: var(--muted);
@@ -226,7 +227,9 @@ main {
   font-weight: 800;
 }
 
-.verification-controls select {
+.verification-controls select,
+.verification-date-controls select,
+.verification-date-controls input {
   width: 100%;
   min-height: 40px;
   padding: 0 34px 0 14px;
@@ -237,10 +240,54 @@ main {
   font: inherit;
 }
 
+.verification-date-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
 .verification-details {
   display: grid;
   gap: 12px;
   padding: 0 16px 16px;
+}
+
+.verification-chart-wrap {
+  margin: 0 16px 16px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.compact-heading {
+  padding: 12px 14px;
+}
+
+.verification-error-chart {
+  min-height: 260px;
+  padding: 8px 12px 14px;
+}
+
+.verification-error-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.verification-error-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.verification-error-point {
+  fill: #ffffff;
+  stroke: var(--accent);
+  stroke-width: 2;
 }
 
 .verification-selection-summary {
@@ -1599,6 +1646,7 @@ thead th {
   .verification-grid,
   .verification-metric-grid,
   .verification-controls,
+  .verification-date-controls,
   .comparison-grid,
   .date-helper-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1637,7 +1685,8 @@ thead th {
 
   .verification-grid,
   .verification-metric-grid,
-  .verification-controls {
+  .verification-controls,
+  .verification-date-controls {
     grid-template-columns: 1fr;
   }
 
