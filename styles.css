@@ -1088,12 +1088,20 @@ td:nth-child(3),
   padding: 8px 18px 14px;
 }
 
+.rank-gap-chart.horizontal-rank-chart {
+  min-height: 0;
+}
+
 .rank-chart-svg {
   display: block;
   height: auto;
   max-height: 290px;
   overflow: visible;
   width: 100%;
+}
+
+.rank-chart-svg.horizontal {
+  max-height: none;
 }
 
 .rank-bar {

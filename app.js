@@ -3272,6 +3272,7 @@ function renderRankProjection(rows, dates) {
 }
 
 function renderRankGapChart(rows, rankDate) {
+  els.rankGapChart.classList.remove("horizontal-rank-chart");
   if (!rows.length) {
     els.rankGapChart.innerHTML = `<div class="empty">No rank estimates to chart.</div>`;
     return;
@@ -3345,6 +3346,81 @@ function renderRankGapChart(rows, rankDate) {
     <div class="rank-chart-legend">
       <span><i class="rank-key estimated"></i>Model estimate</span>
       <span><i class="rank-key actual"></i>Known value</span>
+      <span><i class="rank-ci-key"></i>95% CI</span>
+    </div>
+    <div class="trend-tooltip" hidden></div>
+  `;
+  attachTrendTooltipHandlers(els.rankGapChart);
+}
+
+function renderHorizontalRankGapChart(rows, rankDate) {
+  els.rankGapChart.classList.add("horizontal-rank-chart");
+  if (!rows.length) {
+    els.rankGapChart.innerHTML = `<div class="empty">No estimates to chart.</div>`;
+    return;
+  }
+
+  const width = 1120;
+  const rowSlot = 38;
+  const height = Math.max(150, 76 + (rows.length * rowSlot));
+  const padLeft = 250;
+  const padRight = 34;
+  const padTop = 24;
+  const padBottom = 38;
+  const plotWidth = width - padLeft - padRight;
+  const maxValue = Math.max(...rows.map((row) => Math.max(row.salesHigh || row.sales, row.sales || 0)), 1) * 1.3;
+  const scaleX = (value) => padLeft + ((value / maxValue) * plotWidth);
+  const barHeight = 14;
+  const ciCapHeight = 5;
+  const xTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: maxValue * ratio,
+    x: scaleX(maxValue * ratio)
+  }));
+
+  els.rankGapChart.innerHTML = `
+    <svg class="rank-chart-svg horizontal" viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated sales by genre for ${rankDate}">
+      ${xTicks.map((tick) => `
+        <line x1="${tick.x.toFixed(1)}" y1="${padTop}" x2="${tick.x.toFixed(1)}" y2="${height - padBottom}" class="trend-grid"></line>
+        <text x="${tick.x.toFixed(1)}" y="${height - 14}" text-anchor="middle" class="trend-tick">${compactYen(tick.value)}</text>
+      `).join("")}
+      ${rows.map((row, index) => {
+        const centerY = padTop + (index * rowSlot) + (rowSlot / 2);
+        const y = centerY - (barHeight / 2);
+        const barWidth = Math.max(2, scaleX(row.sales) - padLeft);
+        const lowX = scaleX(row.salesLow || row.sales);
+        const highX = scaleX(row.salesHigh || row.sales);
+        const isActual = row.source === "actual";
+        const label = row.label || `#${row.rank}`;
+        const tooltipTitle = row.tooltipLabel || label;
+        const tooltip = escapeHtml(`${tooltipTitle}\n${isActual ? "Known value" : "Model estimate"}\nSales: ${yen.format(row.sales)}\nUnits sold: ${whole.format(row.units || 0)}\n95% low: ${yen.format(row.salesLow || row.sales)}\n95% high: ${yen.format(row.salesHigh || row.sales)}`);
+        return `
+          <text x="${padLeft - 12}" y="${(centerY + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${escapeHtml(label)}</text>
+          <rect
+            x="${padLeft}"
+            y="${y.toFixed(1)}"
+            width="${barWidth.toFixed(1)}"
+            height="${barHeight}"
+            rx="5"
+            class="rank-bar ${isActual ? "actual" : "estimated"}">
+          </rect>
+          <line x1="${lowX.toFixed(1)}" y1="${centerY.toFixed(1)}" x2="${highX.toFixed(1)}" y2="${centerY.toFixed(1)}" class="rank-ci-line"></line>
+          <line x1="${lowX.toFixed(1)}" y1="${(centerY - ciCapHeight).toFixed(1)}" x2="${lowX.toFixed(1)}" y2="${(centerY + ciCapHeight).toFixed(1)}" class="rank-ci-line"></line>
+          <line x1="${highX.toFixed(1)}" y1="${(centerY - ciCapHeight).toFixed(1)}" x2="${highX.toFixed(1)}" y2="${(centerY + ciCapHeight).toFixed(1)}" class="rank-ci-line"></line>
+          <rect
+            x="${padLeft}"
+            y="${(centerY - (rowSlot / 2)).toFixed(1)}"
+            width="${plotWidth}"
+            height="${rowSlot}"
+            fill="transparent"
+            tabindex="0"
+            class="trend-hover-target"
+            data-tooltip="${tooltip}">
+          </rect>
+        `;
+      }).join("")}
+    </svg>
+    <div class="rank-chart-legend">
+      <span><i class="rank-key estimated"></i>Model estimate</span>
       <span><i class="rank-ci-key"></i>95% CI</span>
     </div>
     <div class="trend-tooltip" hidden></div>
@@ -3789,7 +3865,7 @@ function renderShopGenreRankEstimates(rows, dates, periodItemRows = [], allTimeI
   }
 
   els.rankGapCount.textContent = `Shop ${shop} product estimates for ${rankLabel}`;
-  renderRankGapChart(topRows, rankLabel);
+  renderHorizontalRankGapChart(topRows, rankLabel);
   els.rankGapBody.innerHTML = topRows.map((row) => `
     <tr class="estimated-rank-row">
       <td>#${whole.format(row.rank)}</td>
