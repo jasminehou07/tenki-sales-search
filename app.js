@@ -1033,10 +1033,16 @@ function validationRowsForSelection(type, id) {
     ? state.validationMetrics
     : DEFAULT_VALIDATION_METRICS;
   if (type === "overall") return metrics.filter((row) => String(row.entityId || row.entity_id || "all") === "all");
+  const exactRows = metrics.filter((row) => {
+    const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
+    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
+    return rowType === type && rowId === String(id);
+  });
+  if (id !== "all" && exactRows.length) return exactRows;
   return metrics.filter((row) => {
     const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
     const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
-    return rowType === type && (rowId === String(id) || rowId === "all");
+    return rowType === type && rowId === "all";
   });
 }
 
@@ -1053,15 +1059,28 @@ function renderModelVerification() {
   const entityId = type === "overall" ? "all" : (entitySelect?.value || "all");
   const rows = validationRowsForSelection(type, entityId);
   const title = selectedVerificationLabel(type, entityId);
+  const hasSpecificMetrics = rows.some((row) => {
+    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
+    return rowId === String(entityId) && entityId !== "all";
+  });
   if (els.verificationGenreLabel) els.verificationGenreLabel.hidden = type !== "genre";
   if (els.verificationShopLabel) els.verificationShopLabel.hidden = type !== "shop";
-  if (els.verificationStatus) els.verificationStatus.textContent = rows.length ? `${rows.length} metric${rows.length === 1 ? "" : "s"}` : "Fallback metrics";
+  if (els.verificationStatus) {
+    els.verificationStatus.textContent = entityId === "all" || type === "overall"
+      ? "Overall validation"
+      : hasSpecificMetrics
+        ? "Specific validation"
+        : "Using overall score";
+  }
 
   const metricCards = rows.length ? rows : DEFAULT_VALIDATION_METRICS.filter((row) => row.entityType === type || type === "overall");
   els.verificationDetails.innerHTML = `
-    <div class="verification-selection-summary">
+    <div class="verification-selection-summary${entityId !== "all" && !hasSpecificMetrics && type !== "overall" ? " fallback" : ""}">
       <span>Selected</span>
       <strong>${escapeHtml(title)}</strong>
+      ${entityId !== "all" && !hasSpecificMetrics && type !== "overall"
+        ? `<p>No separate WMAPE has been saved for this exact ${type} yet, so this view is showing the overall ${type} model score for context.</p>`
+        : `<p>${type === "overall" ? "Showing dashboard-wide validation metrics." : "Showing validation metrics for this selection."}</p>`}
     </div>
     <div class="verification-metric-grid">
       ${metricCards.map((row) => {
@@ -1069,7 +1088,10 @@ function renderModelVerification() {
         const metricName = row.metricName || row.metric_name || "WMAPE";
         const value = row.metricValue ?? row.metric_value;
         const sampleSize = row.sampleSize ?? row.sample_size;
-        const description = row.description || (sampleSize ? `${whole.format(sampleSize)} hidden validation rows.` : "Current dashboard validation score.");
+        const fallbackPrefix = entityId !== "all" && !hasSpecificMetrics && type !== "overall"
+          ? `${title}: using overall ${type} model validation because exact saved metrics are not available yet. `
+          : "";
+        const description = fallbackPrefix + (row.description || (sampleSize ? `${whole.format(sampleSize)} hidden validation rows.` : "Current dashboard validation score."));
         return `
           <article class="verification-result-card">
             <span>${escapeHtml(modelName)}</span>
