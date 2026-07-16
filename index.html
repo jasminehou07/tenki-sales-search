@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260716-horizontal-shop-genre">
+  <link rel="stylesheet" href="styles.css?v=20260716-model-verification-page">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -17,10 +17,16 @@
       <p class="eyebrow">Tenki Japan</p>
       <h1>Sales Search</h1>
     </div>
-    <div class="status" id="loadStatus">Loading sales data...</div>
+    <div class="header-actions">
+      <nav class="page-tabs" aria-label="Dashboard pages">
+        <button id="dashboardPageButton" class="page-tab active" type="button" aria-current="page">Dashboard</button>
+        <button id="verificationPageButton" class="page-tab" type="button">Model verification</button>
+      </nav>
+      <div class="status" id="loadStatus">Loading sales data...</div>
+    </div>
   </header>
 
-  <main>
+  <main id="dashboardPage" class="app-page active-page">
     <section class="filters" aria-label="Sales filters">
       <div class="view-tabs" role="tablist" aria-label="Search view">
         <button id="genreViewButton" class="view-tab active" type="button" role="tab" aria-selected="true" data-view-mode="genre" disabled>By genre</button>
@@ -251,6 +257,86 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260716-reliable-shop-top-items"></script>
+  <main id="modelVerificationPage" class="app-page verification-page" hidden>
+    <section class="panel verification-hero" aria-label="Model verification overview">
+      <div>
+        <p class="eyebrow">Model verification</p>
+        <h2>Accuracy Checks</h2>
+        <p class="chart-description">Shows how the prediction models are checked with the 95% training / 5% hidden validation method. Lower WMAPE means the model is closer to the known hidden values.</p>
+      </div>
+      <div class="verification-method">
+        <span>Train on 95%</span>
+        <span>Predict hidden 5%</span>
+        <span>Compare against known values</span>
+      </div>
+    </section>
+
+    <section class="verification-grid" aria-label="Current model accuracy">
+      <article class="verification-card">
+        <span>Total sales model</span>
+        <strong>28.7%</strong>
+        <p>WMAPE for total Rakuten sales estimates shown in the top sales card and genre sales views.</p>
+      </article>
+      <article class="verification-card">
+        <span>Units sold model</span>
+        <strong>17.4%</strong>
+        <p>WMAPE for units sold estimates shown in the top units card.</p>
+      </article>
+      <article class="verification-card">
+        <span>Shop model</span>
+        <strong>49.7%</strong>
+        <p>WMAPE for by-shop sales and sales-by-genre inside a selected shop.</p>
+      </article>
+    </section>
+
+    <section class="panel verification-panel" aria-label="Model accuracy by entity">
+      <div class="panel-heading">
+        <div>
+          <h2>Check a Genre or Shop</h2>
+          <p class="chart-description">Use this to explain which model is being used for the selected part of the dashboard.</p>
+        </div>
+        <span id="verificationStatus">Current validation</span>
+      </div>
+      <div class="verification-controls">
+        <label>
+          Check
+          <select id="verificationTypeSelect">
+            <option value="genre">Genre model</option>
+            <option value="shop">Shop model</option>
+            <option value="overall">Overall models</option>
+          </select>
+        </label>
+        <label id="verificationGenreLabel">
+          Genre
+          <select id="verificationGenreSelect">
+            <option value="all">All product genres</option>
+          </select>
+        </label>
+        <label id="verificationShopLabel" hidden>
+          Shop
+          <select id="verificationShopSelect">
+            <option value="all">All shops</option>
+          </select>
+        </label>
+      </div>
+      <div id="verificationDetails" class="verification-details"></div>
+    </section>
+
+    <section class="panel verification-panel" aria-label="How to read validation">
+      <div class="panel-heading">
+        <div>
+          <h2>How to Read This</h2>
+          <p class="chart-description">These numbers are validation scores, not exact guarantees for a future day.</p>
+        </div>
+      </div>
+      <div class="verification-notes">
+        <p><strong>WMAPE</strong> is weighted mean absolute percentage error. A lower number means the model is usually closer to the known sales values.</p>
+        <p><strong>Genre checks</strong> are most relevant for the By genre page, including Sales by Item and total sales estimates.</p>
+        <p><strong>Shop checks</strong> are most relevant for the By shop page, where the model estimates each shop's genre mix and total shop performance.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js?v=20260716-model-verification-page"></script>
 </body>
 </html>

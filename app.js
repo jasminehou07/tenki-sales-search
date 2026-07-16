@@ -15,6 +15,7 @@ const TOP_SHOPS_JSON_URL = `${API_BASE_URL}/top-shops`;
 const TOP_ITEMS_JSON_URL = `${API_BASE_URL}/top-items`;
 const SHOP_DAILY_JSON_URL = `${API_BASE_URL}/shop/daily`;
 const SHOP_GENRE_DAILY_JSON_URL = `${API_BASE_URL}/shop/genre-daily`;
+const MODEL_VALIDATION_JSON_URL = `${API_BASE_URL}/model-validation`;
 const SHOP_ESTIMATES_BY_MONTH_URL = dataUrl("shop-estimates-by-month");
 const SHOP_SUMMARY_BY_MONTH_URL = dataUrl("shop-summary-by-month");
 const TREND_ESTIMATES_BY_MONTH_URL = dataUrl("trend-estimates-by-month");
@@ -51,6 +52,7 @@ const GENRE_PATH_LABELS = new Map([
 ]);
 
 const state = {
+  pageMode: "dashboard",
   viewMode: "genre",
   rows: [],
   filtered: [],
@@ -85,6 +87,7 @@ const state = {
   shopProjectionSelected: new Set(),
   shopProjectionSelectionKey: "",
   shopPickerOpensAbove: false,
+  validationMetrics: null,
   updateTimer: null,
   updateRun: 0,
   backgroundPreloadStarted: false
@@ -92,6 +95,10 @@ const state = {
 
 const els = {
   loadStatus: document.getElementById("loadStatus"),
+  dashboardPage: document.getElementById("dashboardPage"),
+  modelVerificationPage: document.getElementById("modelVerificationPage"),
+  dashboardPageButton: document.getElementById("dashboardPageButton"),
+  verificationPageButton: document.getElementById("verificationPageButton"),
   genreViewButton: document.getElementById("genreViewButton"),
   shopViewButton: document.getElementById("shopViewButton"),
   genreFilterLabel: document.getElementById("genreFilterLabel"),
@@ -155,7 +162,14 @@ const els = {
   moversList: document.getElementById("moversList"),
   eventsTitle: document.getElementById("eventsTitle"),
   eventList: document.getElementById("eventList"),
-  eventCount: document.getElementById("eventCount")
+  eventCount: document.getElementById("eventCount"),
+  verificationStatus: document.getElementById("verificationStatus"),
+  verificationTypeSelect: document.getElementById("verificationTypeSelect"),
+  verificationGenreLabel: document.getElementById("verificationGenreLabel"),
+  verificationGenreSelect: document.getElementById("verificationGenreSelect"),
+  verificationShopLabel: document.getElementById("verificationShopLabel"),
+  verificationShopSelect: document.getElementById("verificationShopSelect"),
+  verificationDetails: document.getElementById("verificationDetails")
 };
 
 const yen = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
@@ -202,6 +216,12 @@ function addOptions(select, rows) {
     if (row.fullLabel || row.label) option.title = row.fullLabel || row.label;
     select.appendChild(option);
   });
+}
+
+function copySelectOptions(source, target) {
+  if (!source || !target) return;
+  target.innerHTML = source.innerHTML;
+  target.disabled = false;
 }
 
 function ensureRankProjectionOptions(maxRank = 80) {
@@ -304,6 +324,22 @@ function setViewMode(mode) {
   state.viewMode = mode === "shop" ? "shop" : "genre";
   syncViewMode();
   requestUpdate();
+}
+
+function setPageMode(mode) {
+  state.pageMode = mode === "verification" ? "verification" : "dashboard";
+  const verificationMode = state.pageMode === "verification";
+  if (els.dashboardPage) els.dashboardPage.hidden = verificationMode;
+  if (els.modelVerificationPage) els.modelVerificationPage.hidden = !verificationMode;
+  if (els.dashboardPageButton) {
+    els.dashboardPageButton.classList.toggle("active", !verificationMode);
+    els.dashboardPageButton.setAttribute("aria-current", verificationMode ? "false" : "page");
+  }
+  if (els.verificationPageButton) {
+    els.verificationPageButton.classList.toggle("active", verificationMode);
+    els.verificationPageButton.setAttribute("aria-current", verificationMode ? "page" : "false");
+  }
+  if (verificationMode) renderModelVerification();
 }
 
 function requestUpdate(delay = 60) {
@@ -954,6 +990,118 @@ function genreLabel(id) {
   const label = state.genreLabels.get(key) || `Genre ${key || "unknown"}`;
   if (/本体\s*\(Main units\)/i.test(label)) return `${label} - Genre ${key}`;
   return label;
+}
+
+const DEFAULT_VALIDATION_METRICS = [
+  {
+    modelName: "Total sales model",
+    entityType: "genre",
+    entityId: "all",
+    metricName: "WMAPE",
+    metricValue: 28.7,
+    sampleSize: null,
+    description: "Used for total sales estimates, Sales by Item, and genre-level totals."
+  },
+  {
+    modelName: "Units sold model",
+    entityType: "genre",
+    entityId: "all",
+    metricName: "WMAPE",
+    metricValue: 17.4,
+    sampleSize: null,
+    description: "Used for units sold estimates in the top metric card."
+  },
+  {
+    modelName: "Shop sales model",
+    entityType: "shop",
+    entityId: "all",
+    metricName: "WMAPE",
+    metricValue: 49.7,
+    sampleSize: null,
+    description: "Used for the By shop tab and shop-level genre breakdowns."
+  }
+];
+
+function metricValueText(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  return `${number.toFixed(number >= 10 ? 1 : 2)}%`;
+}
+
+function validationRowsForSelection(type, id) {
+  const metrics = Array.isArray(state.validationMetrics) && state.validationMetrics.length
+    ? state.validationMetrics
+    : DEFAULT_VALIDATION_METRICS;
+  if (type === "overall") return metrics.filter((row) => String(row.entityId || row.entity_id || "all") === "all");
+  return metrics.filter((row) => {
+    const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
+    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
+    return rowType === type && (rowId === String(id) || rowId === "all");
+  });
+}
+
+function selectedVerificationLabel(type, id) {
+  if (type === "shop") return id === "all" ? "All shops" : `Shop ${id}`;
+  if (type === "genre") return id === "all" ? "All product genres" : genreLabel(id);
+  return "Overall models";
+}
+
+function renderModelVerification() {
+  if (!els.verificationDetails) return;
+  const type = els.verificationTypeSelect?.value || "genre";
+  const entitySelect = type === "shop" ? els.verificationShopSelect : els.verificationGenreSelect;
+  const entityId = type === "overall" ? "all" : (entitySelect?.value || "all");
+  const rows = validationRowsForSelection(type, entityId);
+  const title = selectedVerificationLabel(type, entityId);
+  if (els.verificationGenreLabel) els.verificationGenreLabel.hidden = type !== "genre";
+  if (els.verificationShopLabel) els.verificationShopLabel.hidden = type !== "shop";
+  if (els.verificationStatus) els.verificationStatus.textContent = rows.length ? `${rows.length} metric${rows.length === 1 ? "" : "s"}` : "Fallback metrics";
+
+  const metricCards = rows.length ? rows : DEFAULT_VALIDATION_METRICS.filter((row) => row.entityType === type || type === "overall");
+  els.verificationDetails.innerHTML = `
+    <div class="verification-selection-summary">
+      <span>Selected</span>
+      <strong>${escapeHtml(title)}</strong>
+    </div>
+    <div class="verification-metric-grid">
+      ${metricCards.map((row) => {
+        const modelName = row.modelName || row.model_name || "Model";
+        const metricName = row.metricName || row.metric_name || "WMAPE";
+        const value = row.metricValue ?? row.metric_value;
+        const sampleSize = row.sampleSize ?? row.sample_size;
+        const description = row.description || (sampleSize ? `${whole.format(sampleSize)} hidden validation rows.` : "Current dashboard validation score.");
+        return `
+          <article class="verification-result-card">
+            <span>${escapeHtml(modelName)}</span>
+            <strong>${escapeHtml(metricValueText(value))}</strong>
+            <small>${escapeHtml(metricName)}</small>
+            <p>${escapeHtml(description)}</p>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+async function loadValidationMetrics() {
+  try {
+    const response = await fetch(MODEL_VALIDATION_JSON_URL);
+    if (!response.ok) throw new Error(`validation_${response.status}`);
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload : payload.rows;
+    state.validationMetrics = rows?.map((row) => ({
+      modelName: row.model_name || row.modelName,
+      entityType: row.entity_type || row.entityType,
+      entityId: row.genre_id || row.shop_id || row.entity_id || row.entityId || "all",
+      metricName: row.metric_name || row.metricName || "WMAPE",
+      metricValue: Number(row.metric_value ?? row.metricValue),
+      sampleSize: Number(row.sample_size ?? row.sampleSize) || null,
+      description: row.description || ""
+    })).filter((row) => Number.isFinite(row.metricValue)) || null;
+  } catch (error) {
+    state.validationMetrics = null;
+  }
+  renderModelVerification();
 }
 
 function syncTopItemsPanelCopy() {
@@ -4305,6 +4453,8 @@ async function init() {
     if (els.shopSelect) {
       addOptions(els.shopSelect, shopOptions);
     }
+    copySelectOptions(els.genreSelect, els.verificationGenreSelect);
+    copySelectOptions(els.shopSelect, els.verificationShopSelect);
     const dateRows = options.filter((row) => row.type === "date");
     buildDateControls(dateRows);
 
@@ -4351,6 +4501,8 @@ async function init() {
     setEnabled(true);
     syncViewMode();
     syncSelectedGenrePath();
+    renderModelVerification();
+    loadValidationMetrics();
     await update();
     scheduleBackgroundPreload();
   } catch (error) {
@@ -4371,6 +4523,16 @@ async function init() {
 
 [els.genreViewButton, els.shopViewButton].filter(Boolean).forEach((button) => {
   button.addEventListener("click", () => setViewMode(button.dataset.viewMode));
+});
+
+[els.dashboardPageButton, els.verificationPageButton].filter(Boolean).forEach((button) => {
+  button.addEventListener("click", () => {
+    setPageMode(button === els.verificationPageButton ? "verification" : "dashboard");
+  });
+});
+
+[els.verificationTypeSelect, els.verificationGenreSelect, els.verificationShopSelect].filter(Boolean).forEach((el) => {
+  el.addEventListener("input", renderModelVerification);
 });
 
 els.rankProjectionSelect?.addEventListener("input", () => requestUpdate());
