@@ -228,6 +228,9 @@ function addOptions(select, rows) {
 function copySelectOptions(source, target) {
   if (!source || !target) return;
   target.innerHTML = source.innerHTML;
+  [...target.options].forEach((option) => {
+    option.dataset.baseLabel = option.textContent;
+  });
   target.disabled = false;
 }
 
@@ -1041,6 +1044,10 @@ function metricValueText(value) {
   return `${number.toFixed(number >= 10 ? 1 : 2)}%`;
 }
 
+function rowEntityId(row) {
+  return String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
+}
+
 function validationRowsForSelection(type, id) {
   const metrics = Array.isArray(state.validationMetrics) && state.validationMetrics.length
     ? state.validationMetrics
@@ -1048,15 +1055,41 @@ function validationRowsForSelection(type, id) {
   if (type === "overall") return metrics.filter((row) => String(row.entityId || row.entity_id || "all") === "all");
   const exactRows = metrics.filter((row) => {
     const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
-    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
-    return rowType === type && rowId === String(id);
+    return rowType === type && rowEntityId(row) === String(id);
   });
   if (id !== "all" && exactRows.length) return exactRows;
   return metrics.filter((row) => {
     const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
-    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
-    return rowType === type && rowId === "all";
+    return rowType === type && rowEntityId(row) === "all";
   });
+}
+
+function specificValidationRows(type, id) {
+  const metrics = Array.isArray(state.validationMetrics) && state.validationMetrics.length
+    ? state.validationMetrics
+    : [];
+  return metrics.filter((row) => String(row.entityType || row.entity_type || "").toLowerCase() === type && rowEntityId(row) === String(id));
+}
+
+function syncVerificationOptionLabels() {
+  const applyLabels = (select, type) => {
+    if (!select) return;
+    [...select.options].forEach((option) => {
+      const baseLabel = option.dataset.baseLabel || option.textContent;
+      option.dataset.baseLabel = baseLabel;
+      if (option.value === "all") {
+        option.textContent = baseLabel;
+        return;
+      }
+      const rows = specificValidationRows(type, option.value);
+      const value = rows.find((row) => /sales/i.test(row.modelName || row.model_name || ""))?.metricValue ?? rows[0]?.metricValue;
+      option.textContent = Number.isFinite(Number(value))
+        ? `${baseLabel} | WMAPE: ${metricValueText(value)}`
+        : baseLabel;
+    });
+  };
+  applyLabels(els.verificationGenreSelect, "genre");
+  applyLabels(els.verificationShopSelect, "shop");
 }
 
 function selectedVerificationLabel(type, id) {
@@ -1194,10 +1227,8 @@ function renderModelVerification() {
   const entityId = type === "overall" ? "all" : (entitySelect?.value || "all");
   const rows = validationRowsForSelection(type, entityId);
   const title = selectedVerificationLabel(type, entityId);
-  const hasSpecificMetrics = rows.some((row) => {
-    const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
-    return rowId === String(entityId) && entityId !== "all";
-  });
+  const exactRows = entityId !== "all" && type !== "overall" ? specificValidationRows(type, entityId) : [];
+  const hasSpecificMetrics = exactRows.length > 0;
   if (els.verificationGenreLabel) els.verificationGenreLabel.hidden = type !== "genre";
   if (els.verificationShopLabel) els.verificationShopLabel.hidden = type !== "shop";
   if (els.verificationStatus) {
@@ -1208,7 +1239,21 @@ function renderModelVerification() {
         : "Using overall score";
   }
 
-  const metricCards = rows.length ? rows : DEFAULT_VALIDATION_METRICS.filter((row) => row.entityType === type || type === "overall");
+  const fallbackRows = rows.length ? rows : DEFAULT_VALIDATION_METRICS.filter((row) => row.entityType === type || type === "overall");
+  const metricCards = entityId !== "all" && type !== "overall" && !hasSpecificMetrics
+    ? [
+      {
+        modelName: `${type === "shop" ? "Shop" : "Genre"} WMAPE`,
+        entityType: type,
+        entityId,
+        metricName: "WMAPE",
+        metricValue: NaN,
+        displayValue: "Not saved",
+        description: `No hidden-test WMAPE has been saved for ${title} yet. Run validation grouped by ${type} to fill this in.`
+      },
+      ...fallbackRows
+    ]
+    : fallbackRows;
   els.verificationDetails.innerHTML = `
     <div class="verification-selection-summary${entityId !== "all" && !hasSpecificMetrics && type !== "overall" ? " fallback" : ""}">
       <span>Selected</span>
@@ -1223,14 +1268,14 @@ function renderModelVerification() {
         const metricName = row.metricName || row.metric_name || "WMAPE";
         const value = row.metricValue ?? row.metric_value;
         const sampleSize = row.sampleSize ?? row.sample_size;
-        const fallbackPrefix = entityId !== "all" && !hasSpecificMetrics && type !== "overall"
+        const fallbackPrefix = entityId !== "all" && !hasSpecificMetrics && type !== "overall" && !row.displayValue
           ? `${title}: using overall ${type} model validation because exact saved metrics are not available yet. `
           : "";
         const description = fallbackPrefix + (row.description || (sampleSize ? `${whole.format(sampleSize)} hidden validation rows.` : "Current dashboard validation score."));
         return `
           <article class="verification-result-card">
             <span>${escapeHtml(modelName)}</span>
-            <strong>${escapeHtml(metricValueText(value))}</strong>
+            <strong>${escapeHtml(row.displayValue || metricValueText(value))}</strong>
             <small>${escapeHtml(metricName)}</small>
             <p>${escapeHtml(description)}</p>
           </article>
@@ -1261,6 +1306,7 @@ async function loadValidationMetrics() {
   } catch (error) {
     state.validationMetrics = null;
   }
+  syncVerificationOptionLabels();
   renderModelVerification();
 }
 
