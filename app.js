@@ -747,13 +747,13 @@ function topShopFromJson(row) {
 function topItemFromJson(row) {
   return {
     date: String(row.date || ""),
-    shop: row.shop ? String(row.shop) : "",
-    genre: row.genre ? String(row.genre) : "",
-    item: row.item ? String(row.item) : "",
-    sales: Number(row.sales) || 0,
-    salesLow: Number(row.sales_low) || 0,
-    salesHigh: Number(row.sales_high) || 0,
-    units: Number(row.units) || 0,
+    shop: row.shop || row.shop_id ? String(row.shop || row.shop_id) : "",
+    genre: row.genre || row.genre_id ? String(row.genre || row.genre_id) : "",
+    item: row.item || row.item_id || row.top_item ? String(row.item || row.item_id || row.top_item) : "",
+    sales: Number(row.sales ?? row.estimated_sales_yen ?? row.total_item_sales) || 0,
+    salesLow: Number(row.sales_low ?? row.sales_low_95) || 0,
+    salesHigh: Number(row.sales_high ?? row.sales_high_95) || 0,
+    units: Number(row.units ?? row.estimated_units ?? row.units_sold) || 0,
     rankRows: Number(row.rank_rows) || 0,
     bestRank: Number(row.best_rank) || 0,
     salesShare: Number(row.sales_share) || 0
@@ -2182,29 +2182,32 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
       if (!itemResponse.ok) throw new Error(`top_items_json_${itemResponse.status}`);
       const payload = await itemResponse.json();
       const rows = (payload.rows || []).map(topItemFromJson);
+      if (!rows.some((row) => row.item && isRealShopId(row.shop))) throw new Error("top_items_json_empty");
       state.loadedTopItemsRanges.set(cacheKey, rows);
       return rows;
     } catch (error) {
-      console.warn("Falling back to top shop/item summary", error);
+      console.warn("Falling back to top item CSV", error);
     }
   }
-  try {
-    const jsonParams = new URLSearchParams({
-      start: uniqueDates[0],
-      end: uniqueDates[uniqueDates.length - 1],
-      genreId: filters.genre || "all",
-      shopId: filters.shop || "all",
-      limit: String(Math.min(limit, 100))
-    });
-    const jsonResponse = await fetch(`${TOP_SHOPS_JSON_URL}?${jsonParams.toString()}`);
-    if (jsonResponse.ok) {
-      const payload = await jsonResponse.json();
-      const rows = (payload.rows || []).map(topShopFromJson);
-      state.loadedTopItemsRanges.set(cacheKey, rows);
-      return rows;
+  if (!isShopMode()) {
+    try {
+      const jsonParams = new URLSearchParams({
+        start: uniqueDates[0],
+        end: uniqueDates[uniqueDates.length - 1],
+        genreId: filters.genre || "all",
+        shopId: filters.shop || "all",
+        limit: String(Math.min(limit, 100))
+      });
+      const jsonResponse = await fetch(`${TOP_SHOPS_JSON_URL}?${jsonParams.toString()}`);
+      if (jsonResponse.ok) {
+        const payload = await jsonResponse.json();
+        const rows = (payload.rows || []).map(topShopFromJson);
+        state.loadedTopItemsRanges.set(cacheKey, rows);
+        return rows;
+      }
+    } catch (error) {
+      console.warn("Falling back to top item CSV", error);
     }
-  } catch (error) {
-    console.warn("Falling back to top item CSV", error);
   }
   const params = new URLSearchParams({
     start: uniqueDates[0],
@@ -2214,8 +2217,34 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
     limit: String(limit)
   });
   const response = await fetch(`${TOP_ITEMS_URL}?${params.toString()}`);
-  if (!response.ok) return [];
-  const rows = parseCsv(await response.text()).map(itemFromCsv);
+  const rows = response.ok ? parseCsv(await response.text()).map(itemFromCsv) : [];
+  if (isShopMode() && !rows.some((row) => row.item && isRealShopId(row.shop))) {
+    const itemRows = filterItemRows(await loadPeriodItems(uniqueDates), filters);
+    const grouped = new Map();
+    itemRows.forEach((row) => {
+      if (!row.item || !isRealShopId(row.shop)) return;
+      const key = `${row.shop}|${row.genre}|${row.item}`;
+      const current = grouped.get(key) || {
+        date: uniqueDates[0],
+        shop: row.shop,
+        genre: row.genre,
+        item: row.item,
+        sales: 0,
+        units: 0,
+        rankRows: 0,
+        bestRank: 999
+      };
+      current.sales += row.sales || 0;
+      current.units += row.units || 0;
+      current.rankRows += 1;
+      grouped.set(key, current);
+    });
+    const fallbackRows = [...grouped.values()]
+      .sort((a, b) => b.sales - a.sales || b.units - a.units || a.item.localeCompare(b.item))
+      .slice(0, Math.min(limit, 100));
+    state.loadedTopItemsRanges.set(cacheKey, fallbackRows);
+    return fallbackRows;
+  }
   state.loadedTopItemsRanges.set(cacheKey, rows);
   return rows;
 }
