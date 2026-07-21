@@ -1071,6 +1071,10 @@ function specificValidationRows(type, id) {
   return metrics.filter((row) => String(row.entityType || row.entity_type || "").toLowerCase() === type && rowEntityId(row) === String(id));
 }
 
+function isWmapeRow(row) {
+  return String(row.metricName || row.metric_name || "").toLowerCase() === "wmape";
+}
+
 function syncVerificationOptionLabels() {
   const applyLabels = (select, type) => {
     if (!select) return;
@@ -1082,7 +1086,8 @@ function syncVerificationOptionLabels() {
         return;
       }
       const rows = specificValidationRows(type, option.value);
-      const value = rows.find((row) => /sales/i.test(row.modelName || row.model_name || ""))?.metricValue ?? rows[0]?.metricValue;
+      const value = rows.find((row) => isWmapeRow(row) && /sales/i.test(row.modelName || row.model_name || ""))?.metricValue
+        ?? rows.find(isWmapeRow)?.metricValue;
       option.textContent = Number.isFinite(Number(value))
         ? `${baseLabel} | WMAPE: ${metricValueText(value)}`
         : baseLabel;
@@ -1143,7 +1148,9 @@ function dailyValidationRowsForSelection(type, id, dates) {
 }
 
 function verificationBaseMetric(rows, type) {
-  const preferred = rows.find((row) => /sales/i.test(row.modelName || row.model_name || "")) || rows[0];
+  const preferred = rows.find((row) => isWmapeRow(row) && /sales/i.test(row.modelName || row.model_name || ""))
+    || rows.find(isWmapeRow)
+    || rows[0];
   if (preferred) return Number(preferred.metricValue ?? preferred.metric_value);
   const fallback = DEFAULT_VALIDATION_METRICS.find((row) => row.entityType === type) || DEFAULT_VALIDATION_METRICS[0];
   return fallback.metricValue;
