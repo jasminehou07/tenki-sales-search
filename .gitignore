@@ -1,1 +1,3 @@
-data/
+/data/
+!/model-generation/daily-genre-forecast/data/
+!/model-generation/daily-genre-forecast/data/**

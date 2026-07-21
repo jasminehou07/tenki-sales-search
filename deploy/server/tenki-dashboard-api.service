@@ -1,0 +1,17 @@
+[Unit]
+Description=TENKI Dashboard Node API
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tenki-dashboard/api
+EnvironmentFile=/opt/tenki-dashboard/.env
+ExecStart=/usr/bin/node /opt/tenki-dashboard/api/server.js
+Restart=always
+RestartSec=5
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

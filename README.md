@@ -18,12 +18,11 @@ That folder contains the model/data generation scripts, validation SQL, and link
 
 ## Restart The Server
 
-If the dashboard link loads but the data/API is down, SSH into the TENKI server and restart the Node API:
+If the dashboard link loads but the data/API is down, SSH into the TENKI server and restart the managed dashboard service:
 
 ```bash
 ssh root@172.237.20.132
-cd /opt/tenki-dashboard/api
-nohup node server.js > /opt/tenki-dashboard/dashboard-api3100.log 2>&1 &
+systemctl restart tenki-dashboard-api
 ```
 
 Then check that it is running:
@@ -38,7 +37,7 @@ Expected result:
 {"ok":true}
 ```
 
-The public dashboard is served through nginx at `https://172.237.20.132.sslip.io/`. The Node API runs privately on localhost port `3100`; nginx proxies `/api` and `/health` to it.
+The public dashboard and API are served through nginx at `https://172.237.20.132.sslip.io/`. Use the SSLIP URL for browser and API access; nginx routes `/api` and `/health` to the private Node service.
 
 ## Rerun Model/Data Generation
 

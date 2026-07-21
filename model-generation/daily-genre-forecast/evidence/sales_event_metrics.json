@@ -1,0 +1,28 @@
+{
+  "mae": 108590.12388581806,
+  "rmse": 281276.31753466214,
+  "wape": 0.2772592789806064,
+  "median_absolute_pct_error": 0.28612162201827307,
+  "r2": 0.8553076345273207,
+  "train_rows": 222033,
+  "train_rows_early": 152679,
+  "train_rows_late": 69354,
+  "test_rows": 17897,
+  "test_rows_early_model": 0,
+  "test_rows_late_model": 17897,
+  "genres": 100,
+  "min_date": "2018-10-29",
+  "max_date": "2026-05-31",
+  "test_start": "2025-12-03",
+  "regime_cutoff": "2024-01-01",
+  "promotion_correlation_threshold": 0.03,
+  "selected_promotion_events": [
+    "black-friday",
+    "marathon",
+    "supersale",
+    "thank-you",
+    "zero-five"
+  ],
+  "target": "daily genre sales yen",
+  "model": "two-regime pre-2024 and 2024+ models with online Rakuten event strength, promotion-effect dashboard lift features, upcoming holiday features, and absolute-error histogram gradient boosting on log sales"
+}

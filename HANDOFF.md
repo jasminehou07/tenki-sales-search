@@ -96,7 +96,7 @@ npm install
 node server.js
 ```
 
-In production, this Node process runs the API on localhost port `3100`, and nginx serves the public SSLIP dashboard plus proxies `/api` and `/health` to Node.
+In production, nginx serves the public SSLIP dashboard and proxies `/api` and `/health` to the private Node service. Public access should always use `https://172.237.20.132.sslip.io/`.
 
 ## Database
 

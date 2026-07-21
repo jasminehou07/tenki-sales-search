@@ -1,0 +1,102 @@
+manifest_version: 1
+run:
+  id: "YYYYMMDD-purpose-short-id"
+  started_at_utc: ""
+  completed_at_utc: ""
+  operator: ""
+  purpose: "validation-only | staging | production"
+  notes: ""
+
+source:
+  git_repository: ""
+  git_commit: ""
+  git_dirty: false
+  source_inventory: "model-generation/SOURCE_INVENTORY.md"
+  schema_snapshot: "docs/manifests/server_schema_20260721.sql"
+
+raw_data:
+  layout: "consolidated | numbered-partitions"
+  root_description: "path recorded locally; do not include credentials"
+  ranking_file_count: null
+  sales_file_count: null
+  ranking_date_min: ""
+  ranking_date_max: ""
+  sales_date_min: ""
+  sales_date_max: ""
+  genre_count: null
+  event_file_sha256: ""
+  checksum_manifest: "docs/manifests/local_raw_data_sha256.txt | docs/manifests/server_raw_data_sha256.txt"
+  duplicate_filename_policy: "prefer unsuffixed, then lowest numbered partition"
+  unmatched_genre_ids: []
+
+environment:
+  operating_system: ""
+  cpu: ""
+  memory_gb: null
+  free_disk_gb_before: null
+  python_version: ""
+  node_version: ""
+  postgresql_version: ""
+  duckdb_version: ""
+  package_freeze_file: ""
+  tenki_dashboard_root: ""
+  tenki_work_dir: ""
+  tenki_raw_data_dir: ""
+  tenki_duckdb_bin: ""
+  # Never record DATABASE_URL passwords, SSH passwords, API keys, or .env values.
+
+features:
+  monthly_actuals_sha256: ""
+  events_sha256: ""
+  genre_names_sha256: ""
+  rank_training_cache_sha256: ""
+  rank_training_rows: null
+  feature_date_min: ""
+  feature_date_max: ""
+  leakage_review: ""
+
+rank_model:
+  implementation: "xgboost | sklearn-hist-gradient-boosting"
+  command: ""
+  publish_requested: false
+  force_publish: false
+  holdout_method: "three deterministic random 5% known-row holdouts"
+  holdout_seeds: []
+  holdout_rows: null
+  wmape: null
+  median_ape: null
+  within_25_percent: null
+  interval_coverage: null
+  median_interval_width: null
+  metrics_files: []
+  output_hash_manifest: ""
+
+shop_model:
+  command: ""
+  validation_method: ""
+  sales_wmape: null
+  units_wmape: null
+  selected_blend: ""
+  units_method: "direct | derived-from-unit-price | mixed"
+  metrics_files: []
+  output_hash_manifest: ""
+
+database_publication:
+  performed: false
+  database_name: "tenki_dashboard"
+  model_version: ""
+  backup_reference: ""
+  loader_commands: []
+  row_counts_before: {}
+  row_counts_after: {}
+  materialized_views_refreshed: []
+  validation_sql_result_reference: ""
+
+acceptance:
+  health_url: "https://172.237.20.132.sslip.io/health"
+  health_passed: false
+  api_checks: []
+  dashboard_checks: []
+  reviewer: ""
+  approved_at_utc: ""
+  rollback_version: ""
