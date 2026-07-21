@@ -88,6 +88,8 @@ const state = {
   shopProjectionSelectionKey: "",
   shopPickerOpensAbove: false,
   validationMetrics: null,
+  validationScopedMetrics: new Map(),
+  validationScopeRequests: new Set(),
   updateTimer: null,
   updateRun: 0,
   backgroundPreloadStarted: false
@@ -169,8 +171,11 @@ const els = {
   verificationGenreSelect: document.getElementById("verificationGenreSelect"),
   verificationShopLabel: document.getElementById("verificationShopLabel"),
   verificationShopSelect: document.getElementById("verificationShopSelect"),
+  verificationTotalSalesWmape: document.getElementById("verificationTotalSalesWmape"),
+  verificationShopWmape: document.getElementById("verificationShopWmape"),
   verificationDetails: document.getElementById("verificationDetails"),
   verificationDateModeSelect: document.getElementById("verificationDateModeSelect"),
+  verificationPeriodStatus: document.getElementById("verificationPeriodStatus"),
   verificationStartDateInput: document.getElementById("verificationStartDateInput"),
   verificationEndDateLabel: document.getElementById("verificationEndDateLabel"),
   verificationEndDateInput: document.getElementById("verificationEndDateInput"),
@@ -1132,20 +1137,114 @@ function selectedVerificationDates() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+function selectedVerificationRange() {
+  syncVerificationDateInputs();
+  const dates = selectedVerificationDates();
+  const start = dates[0] || state.latestDate || "";
+  const end = dates[dates.length - 1] || start;
+  return { start, end, dates };
+}
+
+function verificationMetricType(type) {
+  return type === "overall" ? "genre" : type;
+}
+
+function verificationScopeKey(type, entityId) {
+  const { start, end } = selectedVerificationRange();
+  return `${verificationMetricType(type)}|${entityId || "all"}|${start}|${end}`;
+}
+
 function validationMetricDate(row) {
-  const value = row.date || row.validationDate || row.validation_date || row.evaluatedDate || row.evaluated_date || "";
+  const value = row.date || row.validationDate || row.validation_date || "";
   return String(value).slice(0, 10);
 }
 
-function dailyValidationRowsForSelection(type, id, dates) {
-  if (!Array.isArray(state.validationMetrics) || !state.validationMetrics.length) return [];
+function dailyValidationRowsForSelection(type, id, dates, metrics = state.validationMetrics) {
+  if (!Array.isArray(metrics) || !metrics.length) return [];
   const dateSet = new Set(dates);
-  return state.validationMetrics.filter((row) => {
+  return metrics.filter((row) => {
     const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
     const rowId = String(row.entityId || row.entity_id || row.genreId || row.genre_id || row.shopId || row.shop_id || "all");
     const rowDate = validationMetricDate(row);
     return rowType === type && (rowId === String(id) || rowId === "all") && rowDate && dateSet.has(rowDate);
   });
+}
+
+function mapValidationMetricRows(rows) {
+  return rows?.map((row) => ({
+    modelName: row.model_name || row.modelName,
+    entityType: row.entity_type || row.entityType,
+    entityGroup: row.entity_group || row.entityGroup || "",
+    entityId: row.genre_id || row.shop_id || row.entity_id || row.entityId || "all",
+    genreId: row.genre_id || row.genreId || "",
+    shopId: row.shop_id || row.shopId || "",
+    metricName: row.metric_name || row.metricName || "WMAPE",
+    metricValue: Number(row.metric_value ?? row.metricValue),
+    sampleSize: Number(row.sample_size ?? row.sampleSize) || null,
+    description: row.description || "",
+    date: row.validation_date || row.validationDate || row.date || ""
+  })).filter((row) => Number.isFinite(row.metricValue)) || [];
+}
+
+async function loadScopedValidationMetrics(type, entityId, scopeKey) {
+  if (!scopeKey || state.validationScopedMetrics.has(scopeKey) || state.validationScopeRequests.has(scopeKey)) return;
+  const { start, end } = selectedVerificationRange();
+  if (!start || !end) return;
+  state.validationScopeRequests.add(scopeKey);
+  if (els.verificationPeriodStatus) els.verificationPeriodStatus.textContent = "Loading WMAPE";
+  try {
+    const metricType = verificationMetricType(type);
+    const params = new URLSearchParams({
+      entityType: metricType,
+      metricName: "WMAPE",
+      startDate: start,
+      endDate: end,
+      includeDaily: isVerificationRangeMode() ? "1" : "0"
+    });
+    if (entityId && entityId !== "all") {
+      params.set(metricType === "shop" ? "shopId" : "genreId", entityId);
+    }
+    const response = await fetch(`${MODEL_VALIDATION_JSON_URL}?${params.toString()}`);
+    if (!response.ok) throw new Error(`validation_scope_${response.status}`);
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload : payload.rows;
+    state.validationScopedMetrics.set(scopeKey, mapValidationMetricRows(rows));
+  } catch (error) {
+    state.validationScopedMetrics.set(scopeKey, []);
+  } finally {
+    state.validationScopeRequests.delete(scopeKey);
+  }
+  if (verificationScopeKey(els.verificationTypeSelect?.value || "genre", entityId) === scopeKey
+    || scopeKey.startsWith("genre|all|")
+    || scopeKey.startsWith("shop|all|")) {
+    renderModelVerification();
+  }
+}
+
+function scopedSummaryMetricValue(type, entityId) {
+  const key = verificationScopeKey(type, entityId);
+  const rows = state.validationScopedMetrics.get(key) || null;
+  if (!rows) {
+    loadScopedValidationMetrics(type, entityId, key);
+    return null;
+  }
+  const summary = rows.find((row) => !validationMetricDate(row) && isWmapeRow(row));
+  return summary ? Number(summary.metricValue) : null;
+}
+
+function renderVerificationOverviewCards() {
+  const salesValue = scopedSummaryMetricValue("genre", "all");
+  const shopValue = scopedSummaryMetricValue("shop", "all");
+  if (els.verificationTotalSalesWmape) {
+    els.verificationTotalSalesWmape.textContent = Number.isFinite(salesValue)
+      ? metricValueText(salesValue)
+      : "28.7%";
+  }
+  if (els.verificationShopWmape) {
+    els.verificationShopWmape.textContent = Number.isFinite(shopValue)
+      ? metricValueText(shopValue)
+      : "49.7%";
+  }
 }
 
 function verificationBaseMetric(rows, type) {
@@ -1157,7 +1256,7 @@ function verificationBaseMetric(rows, type) {
   return fallback.metricValue;
 }
 
-function renderVerificationErrorChart(rows, type, entityId) {
+function renderVerificationErrorChart(rows, type, entityId, scopedRows = null) {
   if (!els.verificationErrorChart) return;
   if (els.verificationChartWrap) {
     els.verificationChartWrap.hidden = !isVerificationRangeMode();
@@ -1174,7 +1273,7 @@ function renderVerificationErrorChart(rows, type, entityId) {
     return;
   }
 
-  const dailyRows = dailyValidationRowsForSelection(type, entityId, dates);
+  const dailyRows = dailyValidationRowsForSelection(type, entityId, dates, scopedRows || state.validationMetrics);
   const hasDailyMetrics = dailyRows.length > 0;
   const dailyByDate = new Map(dailyRows.map((row) => [validationMetricDate(row), Number(row.metricValue ?? row.metric_value)]));
   const baseMetric = verificationBaseMetric(rows, type);
@@ -1247,6 +1346,14 @@ function renderModelVerification() {
   const title = selectedVerificationLabel(type, entityId);
   const exactRows = entityId !== "all" && type !== "overall" ? specificValidationRows(type, entityId) : [];
   const hasSpecificMetrics = exactRows.length > 0;
+  const { start, end, dates } = selectedVerificationRange();
+  const scopeKey = verificationScopeKey(type, entityId);
+  const scopedRows = state.validationScopedMetrics.get(scopeKey) || null;
+  const scopedSummaryRows = scopedRows?.filter((row) => !validationMetricDate(row)) || [];
+  const scopedRowsAreLoading = state.validationScopeRequests.has(scopeKey);
+  if (!scopedRows && !scopedRowsAreLoading) {
+    loadScopedValidationMetrics(type, entityId, scopeKey);
+  }
   if (els.verificationGenreLabel) els.verificationGenreLabel.hidden = type !== "genre";
   if (els.verificationShopLabel) els.verificationShopLabel.hidden = type !== "shop";
   if (els.verificationStatus) {
@@ -1256,9 +1363,18 @@ function renderModelVerification() {
         ? "Specific validation"
         : "Using overall score";
   }
+  if (els.verificationPeriodStatus) {
+    els.verificationPeriodStatus.textContent = isVerificationRangeMode()
+      ? `${start || "Start"} to ${end || "End"}`
+      : (start || "Selected day");
+  }
+  renderVerificationOverviewCards();
 
   const fallbackRows = rows.length ? rows : DEFAULT_VALIDATION_METRICS.filter((row) => row.entityType === type || type === "overall");
-  const metricCards = entityId !== "all" && type !== "overall" && !hasSpecificMetrics
+  const periodRows = scopedSummaryRows.length ? scopedSummaryRows : fallbackRows;
+  const hasPeriodMetrics = scopedSummaryRows.length > 0;
+  const hasScopedAttempt = scopedRows !== null;
+  const metricCards = entityId !== "all" && type !== "overall" && !hasSpecificMetrics && !hasPeriodMetrics
     ? [
       {
         modelName: `${type === "shop" ? "Shop" : "Genre"} WMAPE`,
@@ -1271,14 +1387,22 @@ function renderModelVerification() {
       },
       ...fallbackRows
     ]
-    : fallbackRows;
+    : periodRows;
+  const periodCopy = scopedRowsAreLoading
+    ? "Loading WMAPE for the selected period."
+    : hasPeriodMetrics
+      ? `Calculated from ${isVerificationRangeMode() ? "the selected date range" : "the selected day"} using hidden validation rows.`
+      : hasScopedAttempt
+        ? "No hidden validation rows were available for this exact period, so the saved reference score is shown."
+        : "Showing the saved reference score while the selected-period WMAPE loads.";
   els.verificationDetails.innerHTML = `
     <div class="verification-selection-summary${entityId !== "all" && !hasSpecificMetrics && type !== "overall" ? " fallback" : ""}">
       <span>Selected</span>
       <strong>${escapeHtml(title)}</strong>
-      ${entityId !== "all" && !hasSpecificMetrics && type !== "overall"
+      <p>${escapeHtml(periodCopy)}</p>
+      ${entityId !== "all" && !hasSpecificMetrics && type !== "overall" && !hasPeriodMetrics
         ? `<p>No separate WMAPE has been saved for this exact ${type} yet, so this view is showing the overall ${type} model score for context.</p>`
-        : `<p>${type === "overall" ? "Showing dashboard-wide validation metrics." : "Showing validation metrics for this selection."}</p>`}
+        : ""}
     </div>
     <div class="verification-metric-grid">
       ${metricCards.map((row) => {
@@ -1302,7 +1426,7 @@ function renderModelVerification() {
     </div>
   `;
   syncVerificationDateInputs();
-  renderVerificationErrorChart(metricCards, type === "overall" ? "genre" : type, entityId);
+  renderVerificationErrorChart(metricCards, verificationMetricType(type), entityId, scopedRows);
 }
 
 async function loadValidationMetrics() {
@@ -1311,16 +1435,7 @@ async function loadValidationMetrics() {
     if (!response.ok) throw new Error(`validation_${response.status}`);
     const payload = await response.json();
     const rows = Array.isArray(payload) ? payload : payload.rows;
-    state.validationMetrics = rows?.map((row) => ({
-      modelName: row.model_name || row.modelName,
-      entityType: row.entity_type || row.entityType,
-      entityId: row.genre_id || row.shop_id || row.entity_id || row.entityId || "all",
-      metricName: row.metric_name || row.metricName || "WMAPE",
-      metricValue: Number(row.metric_value ?? row.metricValue),
-      sampleSize: Number(row.sample_size ?? row.sampleSize) || null,
-      description: row.description || "",
-      date: row.date || row.validation_date || row.validationDate || row.evaluated_date || row.evaluatedDate || ""
-    })).filter((row) => Number.isFinite(row.metricValue)) || null;
+    state.validationMetrics = mapValidationMetricRows(rows);
   } catch (error) {
     state.validationMetrics = null;
   }

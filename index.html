@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260721-verification-range-chart">
+  <link rel="stylesheet" href="styles.css?v=20260721-date-scoped-wmape">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -271,10 +271,37 @@
       </div>
     </section>
 
+    <section class="panel verification-panel verification-date-panel" aria-label="Verification date selection">
+      <div class="panel-heading">
+        <div>
+          <h2>Validation Period</h2>
+          <p class="chart-description">Choose the day or range used to calculate the WMAPE below.</p>
+        </div>
+        <span id="verificationPeriodStatus">Selected period</span>
+      </div>
+      <div class="verification-date-controls">
+        <label>
+          Date type
+          <select id="verificationDateModeSelect">
+            <option value="day">One day</option>
+            <option value="range">Date range</option>
+          </select>
+        </label>
+        <label>
+          Start date
+          <input id="verificationStartDateInput" type="date">
+        </label>
+        <label id="verificationEndDateLabel">
+          End date
+          <input id="verificationEndDateInput" type="date">
+        </label>
+      </div>
+    </section>
+
     <section class="verification-grid" aria-label="Current model accuracy">
       <article class="verification-card">
         <span>Total sales model</span>
-        <strong>28.7%</strong>
+        <strong id="verificationTotalSalesWmape">28.7%</strong>
         <p>WMAPE for total Rakuten sales estimates shown in the top sales card and genre sales views.</p>
       </article>
       <article class="verification-card">
@@ -284,7 +311,7 @@
       </article>
       <article class="verification-card">
         <span>Shop model</span>
-        <strong>49.7%</strong>
+        <strong id="verificationShopWmape">49.7%</strong>
         <p>WMAPE for by-shop sales and sales-by-genre inside a selected shop.</p>
       </article>
     </section>
@@ -320,23 +347,6 @@
         </label>
       </div>
       <div id="verificationDetails" class="verification-details"></div>
-      <div class="verification-date-controls" aria-label="Verification date selection">
-        <label>
-          Date type
-          <select id="verificationDateModeSelect">
-            <option value="day">One day</option>
-            <option value="range">Date range</option>
-          </select>
-        </label>
-        <label>
-          Start date
-          <input id="verificationStartDateInput" type="date">
-        </label>
-        <label id="verificationEndDateLabel">
-          End date
-          <input id="verificationEndDateInput" type="date">
-        </label>
-      </div>
       <div id="verificationChartWrap" class="verification-chart-wrap">
         <div class="panel-heading compact-heading">
           <div>
@@ -366,6 +376,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260721-verification-range-chart"></script>
+  <script src="app.js?v=20260721-date-scoped-wmape"></script>
 </body>
 </html>
