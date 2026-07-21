@@ -228,6 +228,10 @@ main {
   font-weight: 800;
 }
 
+.verification-date-controls label[hidden] {
+  display: none;
+}
+
 .verification-controls select,
 .verification-date-controls select,
 .verification-date-controls input {
