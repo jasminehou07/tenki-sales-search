@@ -174,6 +174,7 @@ const els = {
   verificationStartDateInput: document.getElementById("verificationStartDateInput"),
   verificationEndDateLabel: document.getElementById("verificationEndDateLabel"),
   verificationEndDateInput: document.getElementById("verificationEndDateInput"),
+  verificationChartWrap: document.getElementById("verificationChartWrap"),
   verificationChartDescription: document.getElementById("verificationChartDescription"),
   verificationChartStatus: document.getElementById("verificationChartStatus"),
   verificationErrorChart: document.getElementById("verificationErrorChart")
@@ -1158,6 +1159,13 @@ function verificationBaseMetric(rows, type) {
 
 function renderVerificationErrorChart(rows, type, entityId) {
   if (!els.verificationErrorChart) return;
+  if (els.verificationChartWrap) {
+    els.verificationChartWrap.hidden = !isVerificationRangeMode();
+  }
+  if (!isVerificationRangeMode()) {
+    els.verificationErrorChart.innerHTML = "";
+    return;
+  }
   const dates = selectedVerificationDates();
   if (!dates.length) {
     els.verificationErrorChart.innerHTML = `<div class="empty">Choose dates to see the validation error graph.</div>`;
@@ -1187,13 +1195,16 @@ function renderVerificationErrorChart(rows, type, entityId) {
   const padRight = 22;
   const padTop = 20;
   const padBottom = 42;
-  const maxValue = Math.max(...validValues, 1) * 1.3;
+  const maxValue = 100;
   const plotWidth = width - padLeft - padRight;
   const plotHeight = height - padTop - padBottom;
   const xFor = (index) => padLeft + (points.length <= 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth);
-  const yFor = (value) => padTop + plotHeight - (value / maxValue) * plotHeight;
+  const yFor = (value) => {
+    const boundedValue = Math.max(0, Math.min(maxValue, Number(value) || 0));
+    return padTop + plotHeight - (boundedValue / maxValue) * plotHeight;
+  };
   const line = points.map((point, index) => `${xFor(index).toFixed(1)},${yFor(point.value).toFixed(1)}`).join(" ");
-  const ticks = [0, maxValue / 2, maxValue].map((value) => ({
+  const ticks = [0, 50, 100].map((value) => ({
     value,
     y: yFor(value)
   }));
