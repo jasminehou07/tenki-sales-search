@@ -322,6 +322,7 @@ function syncViewMode() {
   syncSelectedGenrePath();
   syncRankPanelCopy();
   syncTopItemsPanelCopy();
+  syncDashboardWmapeLabels();
 }
 
 function syncRankPanelCopy() {
@@ -331,10 +332,10 @@ function syncRankPanelCopy() {
   const allShops = isShopMode() && (els.shopSelect?.value || "all") === "all";
   if (title) title.textContent = isShopMode() ? "Sales by Genre" : "Sales by Item";
   if (description) description.textContent = allShops
-    ? "WMAPE: 49.7%"
+    ? `WMAPE: ${shopWmapeText()}`
     : isShopMode()
-      ? "WMAPE: 49.7%"
-      : "WMAPE: 28.7%";
+      ? `WMAPE: ${shopWmapeText()}`
+      : `WMAPE: ${genreSalesWmapeText()}`;
   const tableHeaders = allShops
     ? ["Rank", "Shop", "Top Item ID", "Sales", "Model"]
     : isShopMode()
@@ -374,6 +375,12 @@ function requestUpdate(delay = 60) {
   state.updateTimer = window.setTimeout(() => {
     update(updateId);
   }, delay);
+}
+
+function onValueChange(element, handler) {
+  if (!element) return;
+  element.addEventListener("input", handler);
+  element.addEventListener("change", handler);
 }
 
 function selectedDate() {
@@ -1039,7 +1046,7 @@ const DEFAULT_VALIDATION_METRICS = [
     entityType: "genre",
     entityId: "all",
     metricName: "WMAPE",
-    metricValue: 28.7,
+    metricValue: 57.1,
     sampleSize: null,
     description: "Used for total sales estimates, Sales by Item, and genre-level totals."
   },
@@ -1067,6 +1074,61 @@ function metricValueText(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "-";
   return `${number.toFixed(number >= 10 ? 1 : 2)}%`;
+}
+
+function validationMetricValue({ entityType = "genre", entityId = "all", modelNameIncludes = "sales" } = {}) {
+  const metrics = Array.isArray(state.validationMetrics) && state.validationMetrics.length
+    ? state.validationMetrics
+    : DEFAULT_VALIDATION_METRICS;
+  const rows = metrics.filter((row) => {
+    const rowType = String(row.entityType || row.entity_type || "").toLowerCase();
+    const rowId = rowEntityId(row);
+    const modelName = String(row.modelName || row.model_name || "").toLowerCase();
+    return rowType === entityType
+      && rowId === String(entityId)
+      && isWmapeRow(row)
+      && modelName.includes(String(modelNameIncludes).toLowerCase());
+  });
+  return rows.length ? Number(rows[0].metricValue ?? rows[0].metric_value) : null;
+}
+
+function genreSalesWmapeValue() {
+  return validationMetricValue({ entityType: "genre", entityId: "all", modelNameIncludes: "sales" })
+    ?? DEFAULT_VALIDATION_METRICS[0].metricValue;
+}
+
+function unitsWmapeValue() {
+  return validationMetricValue({ entityType: "genre", entityId: "all", modelNameIncludes: "units" })
+    ?? DEFAULT_VALIDATION_METRICS[1].metricValue;
+}
+
+function shopWmapeValue() {
+  return validationMetricValue({ entityType: "shop", entityId: "all", modelNameIncludes: "sales" })
+    ?? DEFAULT_VALIDATION_METRICS[2].metricValue;
+}
+
+function genreSalesWmapeText() {
+  return metricValueText(genreSalesWmapeValue());
+}
+
+function unitsWmapeText() {
+  return metricValueText(unitsWmapeValue());
+}
+
+function shopWmapeText() {
+  return metricValueText(shopWmapeValue());
+}
+
+function syncDashboardWmapeLabels() {
+  const metricNotes = document.querySelectorAll(".metrics .metric-note");
+  if (metricNotes[0]) metricNotes[0].textContent = `WMAPE: ${genreSalesWmapeText()}`;
+  if (metricNotes[1]) metricNotes[1].textContent = `WMAPE: ${unitsWmapeText()}`;
+  const rankDescription = document.querySelector(".rank-gap-heading .chart-description");
+  if (rankDescription) {
+    rankDescription.textContent = isShopMode() ? `WMAPE: ${shopWmapeText()}` : `WMAPE: ${genreSalesWmapeText()}`;
+  }
+  const genreSalesDescription = document.querySelector(".rank-projection-panel .chart-description");
+  if (genreSalesDescription) genreSalesDescription.textContent = `WMAPE: ${genreSalesWmapeText()}`;
 }
 
 function rowEntityId(row) {
@@ -1336,12 +1398,12 @@ function renderVerificationOverviewCards(type = els.verificationTypeSelect?.valu
   if (els.verificationTotalSalesWmape) {
     els.verificationTotalSalesWmape.textContent = Number.isFinite(salesValue)
       ? metricValueText(salesValue)
-      : "28.7%";
+      : genreSalesWmapeText();
   }
   if (els.verificationShopWmape) {
     els.verificationShopWmape.textContent = Number.isFinite(selectedShopValue)
       ? metricValueText(selectedShopValue)
-      : "49.7%";
+      : shopWmapeText();
   }
 }
 
@@ -1541,6 +1603,7 @@ async function loadValidationMetrics() {
     state.validationMetrics = null;
   }
   syncVerificationOptionLabels();
+  syncDashboardWmapeLabels();
   renderModelVerification();
 }
 
@@ -2754,7 +2817,7 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
     uniqueDates[uniqueDates.length - 1],
     filters.genre || "all",
     filters.shop || "all",
-    Math.min(limit, 100)
+    Math.min(limit, 5000)
   ].join("|");
   if (state.loadedTopItemsRanges.has(cacheKey)) return state.loadedTopItemsRanges.get(cacheKey);
   if (isShopMode()) {
@@ -2764,7 +2827,7 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
         end: uniqueDates[uniqueDates.length - 1],
         genreId: filters.genre || "all",
         shopId: filters.shop || "all",
-        limit: String(Math.min(limit, 100))
+        limit: String(Math.min(limit, 5000))
       });
       const itemResponse = await fetch(`${TOP_ITEMS_JSON_URL}?${itemParams.toString()}`);
       if (!itemResponse.ok) throw new Error(`top_items_json_${itemResponse.status}`);
@@ -2784,7 +2847,7 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
         end: uniqueDates[uniqueDates.length - 1],
         genreId: filters.genre || "all",
         shopId: filters.shop || "all",
-        limit: String(Math.min(limit, 100))
+        limit: String(Math.min(limit, 5000))
       });
       const jsonResponse = await fetch(`${TOP_SHOPS_JSON_URL}?${jsonParams.toString()}`);
       if (jsonResponse.ok) {
@@ -2829,7 +2892,7 @@ async function loadTopItemsForSelection(dates, filters, limit = 50) {
     });
     const fallbackRows = [...grouped.values()]
       .sort((a, b) => b.sales - a.sales || b.units - a.units || a.item.localeCompare(b.item))
-      .slice(0, Math.min(limit, 100));
+      .slice(0, Math.min(limit, 5000));
     state.loadedTopItemsRanges.set(cacheKey, fallbackRows);
     return fallbackRows;
   }
@@ -4957,7 +5020,7 @@ async function init() {
 }
 
 [els.genreSelect, els.shopSelect].filter(Boolean).forEach((el) => {
-  el.addEventListener("input", () => {
+  onValueChange(el, () => {
     if (el === els.genreSelect && els.shopSelect) els.shopSelect.value = "all";
     if (el === els.shopSelect && els.genreSelect) els.genreSelect.value = "all";
     syncViewMode();
@@ -4977,10 +5040,10 @@ async function init() {
 });
 
 [els.verificationTypeSelect, els.verificationGenreSelect, els.verificationShopSelect].filter(Boolean).forEach((el) => {
-  el.addEventListener("input", renderModelVerification);
+  onValueChange(el, renderModelVerification);
 });
 
-els.verificationDateModeSelect?.addEventListener("input", () => {
+onValueChange(els.verificationDateModeSelect, () => {
   if (isVerificationRangeMode()) {
     clearVerificationPresetButtons();
     [...els.verificationPresetButtons].find((button) => button.dataset.preset === "30")?.classList.add("active");
@@ -4994,7 +5057,7 @@ els.verificationDateModeSelect?.addEventListener("input", () => {
 });
 
 [els.verificationStartDateInput, els.verificationEndDateInput].filter(Boolean).forEach((el) => {
-  el.addEventListener("input", () => {
+  onValueChange(el, () => {
     clearVerificationPresetButtons();
     if (!isVerificationRangeMode()) els.verificationEndDateInput.value = els.verificationStartDateInput.value;
     syncVerificationDateInputs();
@@ -5039,9 +5102,9 @@ els.verificationApplyDateButton?.addEventListener("click", () => {
   renderModelVerification();
 });
 
-els.rankProjectionSelect?.addEventListener("input", () => requestUpdate());
+onValueChange(els.rankProjectionSelect, () => requestUpdate());
 
-els.dateModeSelect.addEventListener("input", () => {
+onValueChange(els.dateModeSelect, () => {
   if (isRangeMode()) {
     const currentDate = selectedDate();
     const currentEndDate = selectedEndDate();
@@ -5060,7 +5123,7 @@ els.dateModeSelect.addEventListener("input", () => {
   requestUpdate();
 });
 
-els.yearSelect.addEventListener("input", () => {
+onValueChange(els.yearSelect, () => {
   refreshMonthOptions(false);
   refreshDayOptions(false);
   syncCalendarInputs();
@@ -5070,7 +5133,7 @@ els.yearSelect.addEventListener("input", () => {
   requestUpdate();
 });
 
-els.monthSelect.addEventListener("input", () => {
+onValueChange(els.monthSelect, () => {
   refreshDayOptions(false);
   syncCalendarInputs();
   clearActivePreset();
@@ -5079,7 +5142,7 @@ els.monthSelect.addEventListener("input", () => {
   requestUpdate();
 });
 
-els.daySelect.addEventListener("input", () => {
+onValueChange(els.daySelect, () => {
   syncCalendarInputs();
   clearActivePreset();
   syncDateRangeLabel();
@@ -5087,7 +5150,7 @@ els.daySelect.addEventListener("input", () => {
   requestUpdate();
 });
 
-els.endYearSelect.addEventListener("input", () => {
+onValueChange(els.endYearSelect, () => {
   refreshEndMonthOptions(false);
   refreshEndDayOptions(false);
   syncCalendarInputs();
@@ -5096,7 +5159,7 @@ els.endYearSelect.addEventListener("input", () => {
   requestUpdate();
 });
 
-els.endMonthSelect.addEventListener("input", () => {
+onValueChange(els.endMonthSelect, () => {
   refreshEndDayOptions(false);
   syncCalendarInputs();
   clearActivePreset();
@@ -5104,14 +5167,14 @@ els.endMonthSelect.addEventListener("input", () => {
   requestUpdate();
 });
 
-els.endDaySelect.addEventListener("input", () => {
+onValueChange(els.endDaySelect, () => {
   syncCalendarInputs();
   clearActivePreset();
   syncDateRangeLabel();
   requestUpdate();
 });
 
-els.startDateInput.addEventListener("input", () => {
+onValueChange(els.startDateInput, () => {
   const date = nearestAvailableDate(els.startDateInput.value);
   if (!date) return;
   setDateParts(date);
@@ -5120,7 +5183,7 @@ els.startDateInput.addEventListener("input", () => {
   syncDateRangeLabel();
 });
 
-els.endDateInput.addEventListener("input", () => {
+onValueChange(els.endDateInput, () => {
   const date = nearestAvailableDate(els.endDateInput.value);
   if (!date) return;
   if (!isRangeMode()) return;
