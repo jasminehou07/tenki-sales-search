@@ -58,7 +58,24 @@ if [[ -d "$APP_ROOT/parquet" ]]; then
 fi
 
 if [[ -d "$APP_ROOT/site-data/data" ]]; then
+  ln -sfn "$APP_ROOT/site-data/data" "$HANDOFF_ROOT/data-links/generated-csv"
   ln -sfn "$APP_ROOT/site-data/data" "$HANDOFF_ROOT/data-links/legacy-site-data"
+fi
+
+for raw_dir in events genre-ranking genre-sales; do
+  if [[ -d "/root/$raw_dir" ]]; then
+    ln -sfn "/root/$raw_dir" "$HANDOFF_ROOT/data-links/$raw_dir"
+  fi
+done
+
+for raw_dir in genre-ranking2 genre-ranking3 genre-sales2 genre-sales3; do
+  if [[ -d "/root/$raw_dir" ]]; then
+    ln -sfn "/root/$raw_dir" "$HANDOFF_ROOT/data-links/$raw_dir"
+  fi
+done
+
+if [[ -d "/root/TENKI" ]]; then
+  ln -sfn "/root/TENKI" "$HANDOFF_ROOT/data-links/root-tenki"
 fi
 
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$HANDOFF_ROOT/last_refreshed_utc.txt"

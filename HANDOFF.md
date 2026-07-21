@@ -48,6 +48,10 @@ The server handoff folder is organized like this:
     env.template
   data-links/
     parquet -> /opt/tenki-dashboard/parquet
+    generated-csv -> /opt/tenki-dashboard/site-data/data
+    events -> /root/events
+    genre-ranking -> /root/genre-ranking
+    genre-sales -> /root/genre-sales
 ```
 
 The handoff folder intentionally links to the existing large parquet data instead of duplicating it. This keeps the server from storing the same multi-GB data twice.
@@ -60,6 +64,10 @@ The handoff folder intentionally links to the existing large parquet data instea
 - `sql/`: database schema, indexes, and useful dashboard queries.
 - `config/env.template`: shows the environment variables needed to run the API. The real `.env` stays in the production app folder and should not be committed publicly.
 - `data-links/parquet`: points to the generated parquet output files on the server.
+- `data-links/generated-csv`: points to the older generated CSV chunks used by compatibility API routes.
+- `data-links/events`: points to the source event/promotion files.
+- `data-links/genre-ranking`: points to the source top-ranking item files.
+- `data-links/genre-sales`: points to the source sales files.
 
 ## API Endpoints Used By The Dashboard
 
