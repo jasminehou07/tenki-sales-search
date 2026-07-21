@@ -4,9 +4,9 @@ This folder is the handoff point for the Rakuten/TENKI sales dashboard. It is me
 
 ## Live URLs
 
-- Dashboard: http://172.237.20.132:3000/
-- API health check: http://172.237.20.132:3000/health
-- API base: http://172.237.20.132:3000/api
+- Dashboard: https://172.237.20.132.sslip.io/
+- API health check: https://172.237.20.132.sslip.io/health
+- API base: https://172.237.20.132.sslip.io/api
 
 ## Main Server Paths
 
@@ -96,7 +96,7 @@ npm install
 node server.js
 ```
 
-In production, this Node process serves both the dashboard website and `/api` routes on port `3000`.
+In production, this Node process runs the API on localhost port `3100`, and nginx serves the public SSLIP dashboard plus proxies `/api` and `/health` to Node.
 
 ## Database
 

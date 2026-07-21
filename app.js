@@ -1,4 +1,4 @@
-const DATA_BASE_URL = (window.TENKI_DATA_BASE_URL || "http://172.237.20.132:3000/api/data").replace(/\/$/, "");
+const DATA_BASE_URL = (window.TENKI_DATA_BASE_URL || "https://172.237.20.132.sslip.io/api/data").replace(/\/$/, "");
 const API_BASE_URL = DATA_BASE_URL.replace(/\/api\/data$/, "/api");
 const dataUrl = (path) => `${DATA_BASE_URL}/${path.replace(/^\//, "")}`;
 const OPTIONS_URL = dataUrl("filter_options.csv?v=20260715-bilingual-genre-paths");

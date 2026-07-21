@@ -9,7 +9,7 @@ const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 3100);
 const corsOrigins = new Set((process.env.CORS_ORIGIN || 'https://jasminehou07.github.io').split(',').map((origin) => origin.trim()).filter(Boolean));
 const CSV_DATA_ROOT = '/opt/tenki-dashboard/site-data/data';
 const SITE_ROOT = process.env.SITE_ROOT || '/opt/tenki-dashboard/site-data';
@@ -1196,6 +1196,6 @@ app.get(/.*/, (req, res, next) => {
   return res.sendFile(path.join(SITE_ROOT, 'index.html'));
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`TENKI dashboard server listening on 0.0.0.0:${port}`);
+app.listen(port, '127.0.0.1', () => {
+  console.log(`TENKI dashboard server listening on 127.0.0.1:${port}`);
 });
