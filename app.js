@@ -176,6 +176,7 @@ const els = {
   verificationDetails: document.getElementById("verificationDetails"),
   verificationDateModeSelect: document.getElementById("verificationDateModeSelect"),
   verificationPeriodStatus: document.getElementById("verificationPeriodStatus"),
+  verificationStartDateText: document.getElementById("verificationStartDateText"),
   verificationStartDateInput: document.getElementById("verificationStartDateInput"),
   verificationEndDateLabel: document.getElementById("verificationEndDateLabel"),
   verificationEndDateInput: document.getElementById("verificationEndDateInput"),
@@ -1121,8 +1122,10 @@ function syncVerificationDateInputs() {
   });
   if (!els.verificationStartDateInput.value) els.verificationStartDateInput.value = state.latestDate;
   if (!els.verificationEndDateInput.value) els.verificationEndDateInput.value = state.latestDate;
-  if (els.verificationEndDateLabel) els.verificationEndDateLabel.hidden = !isVerificationRangeMode();
-  if (!isVerificationRangeMode()) els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+  const rangeMode = isVerificationRangeMode();
+  if (els.verificationStartDateText) els.verificationStartDateText.textContent = rangeMode ? "Start date" : "Date";
+  if (els.verificationEndDateLabel) els.verificationEndDateLabel.hidden = !rangeMode;
+  if (!rangeMode) els.verificationEndDateInput.value = els.verificationStartDateInput.value;
 }
 
 function selectedVerificationDates() {

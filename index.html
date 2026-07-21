@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260721-either-genre-or-shop">
+  <link rel="stylesheet" href="styles.css?v=20260721-single-verification-date">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -284,8 +284,8 @@
             <option value="range">Date range</option>
           </select>
         </label>
-        <label>
-          Start date
+        <label id="verificationStartDateLabel">
+          <span id="verificationStartDateText">Date</span>
           <input id="verificationStartDateInput" type="date">
         </label>
         <label id="verificationEndDateLabel">
@@ -359,6 +359,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260721-either-genre-or-shop"></script>
+  <script src="app.js?v=20260721-single-verification-date"></script>
 </body>
 </html>
