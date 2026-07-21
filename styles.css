@@ -212,6 +212,12 @@ main {
   gap: 14px;
 }
 
+.verification-date-panel {
+  position: relative;
+  z-index: 40;
+  overflow: visible;
+}
+
 .verification-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -246,25 +252,30 @@ main {
 }
 
 .verification-date-controls {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
   padding: 0 16px 16px;
 }
 
 .verification-date-pill-row {
-  align-items: center;
+  align-items: end;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .verification-date-picker-shell {
-  min-width: min(420px, 100%);
+  align-self: end;
+  position: relative;
+  z-index: 50;
+  min-width: min(430px, 100%);
 }
 
 .verification-date-picker-shell .date-range-pill {
   max-width: 100%;
+  min-height: 40px;
 }
 
 .verification-date-picker-shell .date-range-pill strong {
@@ -274,6 +285,9 @@ main {
 }
 
 .verification-date-popover {
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 2000;
   grid-template-columns: 150px minmax(350px, 1fr);
 }
 
@@ -572,6 +586,16 @@ body.range-mode .date-stepper {
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 22px 60px rgba(23, 32, 42, 0.18);
+}
+
+.panel.verification-date-panel {
+  position: relative;
+  z-index: 100;
+  overflow: visible;
+}
+
+.verification-date-panel .verification-date-popover {
+  z-index: 3000;
 }
 
 .date-popover[hidden] {
