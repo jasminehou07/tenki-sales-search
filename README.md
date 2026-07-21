@@ -6,6 +6,12 @@ Dashboard for searching Tenki Japan/Rakuten sales estimates by product genre, sh
 
 Open the live website at https://172.237.20.132.sslip.io/.
 
+## Server Handoff
+
+TENKI server source folder: `/root/src/tenki-sales-search`.
+
+That folder contains the dashboard frontend, API code, SQL/scripts, and links to the server-side data folders needed to reproduce the dashboard outputs.
+
 ## Run Locally
 
 ```bash

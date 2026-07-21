@@ -11,7 +11,7 @@ This folder is the handoff point for the Rakuten/TENKI sales dashboard. It is me
 ## Main Server Paths
 
 - Production app root: `/opt/tenki-dashboard`
-- Company handoff folder: `/opt/tenki-dashboard-handoff`
+- Company source handoff folder: `/root/src/tenki-sales-search`
 - Served frontend files: `/opt/tenki-dashboard/site-data`
 - Node API: `/opt/tenki-dashboard/api/server.js`
 - Postgres database: `tenki_dashboard`
@@ -23,7 +23,7 @@ This folder is the handoff point for the Rakuten/TENKI sales dashboard. It is me
 The server handoff folder is organized like this:
 
 ```text
-/opt/tenki-dashboard-handoff/
+/root/src/tenki-sales-search/
   README.md
   site/
     index.html
@@ -91,7 +91,7 @@ The older `/api/data/*.csv` endpoints are compatibility endpoints for parts of t
 From the server:
 
 ```bash
-cd /opt/tenki-dashboard/api
+cd /root/src/tenki-sales-search/api
 npm install
 node server.js
 ```
@@ -136,4 +136,6 @@ Then restart the API process if needed.
 
 - Keep private TENKI data and secrets off GitHub.
 - The public GitHub Pages URL redirects to the server dashboard.
+- The server source handoff lives in `/root/src/tenki-sales-search` so TENKI can keep or rebuild the project after the internship.
+- The production app still runs from `/opt/tenki-dashboard`; `/root/src/tenki-sales-search` is the reproducible source handoff folder.
 - The server is the current source of truth for Postgres-backed dashboard behavior.
