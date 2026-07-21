@@ -1149,6 +1149,11 @@ function verificationMetricType(type) {
   return type === "overall" ? "genre" : type;
 }
 
+function supportsDateScopedValidation(type, entityId) {
+  const metricType = verificationMetricType(type);
+  return metricType === "genre" || (metricType === "shop" && entityId && entityId !== "all");
+}
+
 function verificationScopeKey(type, entityId) {
   const { start, end } = selectedVerificationRange();
   return `${verificationMetricType(type)}|${entityId || "all"}|${start}|${end}`;
@@ -1222,6 +1227,7 @@ async function loadScopedValidationMetrics(type, entityId, scopeKey) {
 }
 
 function scopedSummaryMetricValue(type, entityId) {
+  if (!supportsDateScopedValidation(type, entityId)) return null;
   const key = verificationScopeKey(type, entityId);
   const rows = state.validationScopedMetrics.get(key) || null;
   if (!rows) {
@@ -1234,16 +1240,13 @@ function scopedSummaryMetricValue(type, entityId) {
 
 function renderVerificationOverviewCards() {
   const salesValue = scopedSummaryMetricValue("genre", "all");
-  const shopValue = scopedSummaryMetricValue("shop", "all");
   if (els.verificationTotalSalesWmape) {
     els.verificationTotalSalesWmape.textContent = Number.isFinite(salesValue)
       ? metricValueText(salesValue)
       : "28.7%";
   }
   if (els.verificationShopWmape) {
-    els.verificationShopWmape.textContent = Number.isFinite(shopValue)
-      ? metricValueText(shopValue)
-      : "49.7%";
+    els.verificationShopWmape.textContent = "49.7%";
   }
 }
 
@@ -1348,10 +1351,11 @@ function renderModelVerification() {
   const hasSpecificMetrics = exactRows.length > 0;
   const { start, end, dates } = selectedVerificationRange();
   const scopeKey = verificationScopeKey(type, entityId);
-  const scopedRows = state.validationScopedMetrics.get(scopeKey) || null;
+  const canUseScopedValidation = supportsDateScopedValidation(type, entityId);
+  const scopedRows = canUseScopedValidation ? (state.validationScopedMetrics.get(scopeKey) || null) : null;
   const scopedSummaryRows = scopedRows?.filter((row) => !validationMetricDate(row)) || [];
-  const scopedRowsAreLoading = state.validationScopeRequests.has(scopeKey);
-  if (!scopedRows && !scopedRowsAreLoading) {
+  const scopedRowsAreLoading = canUseScopedValidation && state.validationScopeRequests.has(scopeKey);
+  if (canUseScopedValidation && !scopedRows && !scopedRowsAreLoading) {
     loadScopedValidationMetrics(type, entityId, scopeKey);
   }
   if (els.verificationGenreLabel) els.verificationGenreLabel.hidden = type !== "genre";
@@ -1392,6 +1396,8 @@ function renderModelVerification() {
     ? "Loading WMAPE for the selected period."
     : hasPeriodMetrics
       ? `Calculated from ${isVerificationRangeMode() ? "the selected date range" : "the selected day"} using hidden validation rows.`
+      : !canUseScopedValidation && verificationMetricType(type) === "shop"
+        ? "Showing the saved shop-model validation score. Date-scoped shop validation needs a separate shop-level holdout table."
       : hasScopedAttempt
         ? "No hidden validation rows were available for this exact period, so the saved reference score is shown."
         : "Showing the saved reference score while the selected-period WMAPE loads.";
