@@ -619,6 +619,10 @@ body:not(.range-mode) .end-date-field {
   display: none;
 }
 
+body:not(.range-mode) .verification-date-popover:not(.day-only) .preset-list {
+  display: grid;
+}
+
 .preset-list {
   display: grid;
   gap: 6px;

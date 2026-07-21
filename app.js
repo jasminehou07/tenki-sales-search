@@ -1224,9 +1224,17 @@ function applyVerificationDatePreset(preset, shouldRender = true) {
   const count = Number(preset);
   const dates = Number.isFinite(count)
     ? datesEndingOn(state.latestDate, count)
-    : datesEndingOn(state.latestDate, 30);
+    : preset === "today"
+      ? datesEndingOn(state.latestDate, 1)
+      : preset === "mtd"
+        ? monthToDateDates()
+        : preset === "ytd"
+          ? yearToDateDates()
+          : preset === "all"
+            ? allTimeDates()
+            : latestMonthDates();
   if (!dates.length) return;
-  els.verificationDateModeSelect.value = "range";
+  els.verificationDateModeSelect.value = dates.length === 1 ? "day" : "range";
   els.verificationStartDateInput.value = dates[0];
   els.verificationEndDateInput.value = dates[dates.length - 1];
   syncVerificationDateInputs();

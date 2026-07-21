@@ -9,7 +9,7 @@
       window.location.replace("https://172.237.20.132.sslip.io/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260721-validation-tooltip2">
+  <link rel="stylesheet" href="styles.css?v=20260721-validation-presets">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -291,10 +291,16 @@
           </button>
           <div id="verificationDatePopover" class="date-popover verification-date-popover" hidden>
             <div id="verificationPresetList" class="preset-list" aria-label="Verification date range presets">
+              <button class="verification-preset-button" type="button" data-preset="today">Latest day</button>
               <button class="verification-preset-button" type="button" data-preset="7">Last 7 days</button>
+              <button class="verification-preset-button" type="button" data-preset="28">Last 4 weeks</button>
               <button class="verification-preset-button active" type="button" data-preset="30">Past month</button>
+              <button class="verification-preset-button" type="button" data-preset="183">Last 6 months</button>
               <button class="verification-preset-button" type="button" data-preset="90">Last 3 months</button>
               <button class="verification-preset-button" type="button" data-preset="365">Last 12 months</button>
+              <button class="verification-preset-button" type="button" data-preset="mtd">Month to date</button>
+              <button class="verification-preset-button" type="button" data-preset="ytd">Year to date</button>
+              <button class="verification-preset-button" type="button" data-preset="all">All time</button>
             </div>
             <div class="date-popover-main">
               <div class="calendar-controls verification-calendar-controls" aria-label="Verification calendar date selection">
@@ -382,6 +388,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260721-validation-tooltip2"></script>
+  <script src="app.js?v=20260721-validation-presets"></script>
 </body>
 </html>
