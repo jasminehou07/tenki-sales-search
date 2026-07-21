@@ -319,6 +319,7 @@ main {
 }
 
 .verification-error-chart {
+  position: relative;
   min-height: 260px;
   padding: 8px 12px 14px;
 }
@@ -341,6 +342,12 @@ main {
   fill: #ffffff;
   stroke: var(--accent);
   stroke-width: 2;
+  cursor: pointer;
+}
+
+.verification-error-point:focus {
+  outline: none;
+  stroke-width: 3;
 }
 
 .verification-selection-summary {

@@ -1486,15 +1486,15 @@ function renderVerificationErrorChart(rows, type, entityId, scopedRows = null) {
       `).join("")}
       <polyline points="${line}" class="verification-error-line"></polyline>
       ${points.map((point, index) => `
-        <circle cx="${xFor(index).toFixed(1)}" cy="${yFor(point.value).toFixed(1)}" r="3" class="verification-error-point">
-          <title>${point.date}: ${metricValueText(point.value)} WMAPE (${point.source})</title>
-        </circle>
+        <circle cx="${xFor(index).toFixed(1)}" cy="${yFor(point.value).toFixed(1)}" r="4" class="verification-error-point trend-hover-target" tabindex="0" data-tooltip="${escapeHtml(`${point.date}\nWMAPE: ${metricValueText(point.value)}\n${point.source}`)}"></circle>
       `).join("")}
       ${visibleTicks.map(({ point, index }) => `
         <text x="${xFor(index).toFixed(1)}" y="${height - 16}" text-anchor="middle" class="trend-tick">${point.date.slice(5)}</text>
       `).join("")}
     </svg>
+    <div class="trend-tooltip" hidden></div>
   `;
+  attachTrendTooltipHandlers(els.verificationErrorChart);
 }
 
 function renderModelVerification() {
@@ -2213,7 +2213,7 @@ function syncSelectedGenrePath() {
 }
 
 function positionTrendTooltip(tooltip, event) {
-  const chart = tooltip.closest(".trend-chart, .event-list, .rank-gap-chart") || els.trendChart;
+  const chart = tooltip.closest(".trend-chart, .event-list, .rank-gap-chart, .verification-error-chart") || els.trendChart;
   const chartRect = chart.getBoundingClientRect();
   const tooltipRect = tooltip.getBoundingClientRect();
   const targetRect = event.currentTarget?.getBoundingClientRect();
@@ -2248,7 +2248,13 @@ function attachTrendTooltipHandlers(chart = els.trendChart) {
 
   chart.querySelectorAll(".trend-hover-target").forEach((point) => {
     point.addEventListener("mouseenter", (event) => showTrendTooltip(point, tooltip, event));
-    point.addEventListener("mousemove", (event) => positionTrendTooltip(tooltip, event));
+    point.addEventListener("mousemove", (event) => {
+      if (tooltip.hidden) {
+        showTrendTooltip(point, tooltip, event);
+        return;
+      }
+      positionTrendTooltip(tooltip, event);
+    });
     point.addEventListener("mouseleave", () => {
       tooltip.hidden = true;
     });
