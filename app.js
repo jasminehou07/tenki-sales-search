@@ -4866,6 +4866,9 @@ async function init() {
 
 [els.genreSelect, els.shopSelect].filter(Boolean).forEach((el) => {
   el.addEventListener("input", () => {
+    if (el === els.genreSelect && els.shopSelect) els.shopSelect.value = "all";
+    if (el === els.shopSelect && els.genreSelect) els.genreSelect.value = "all";
+    syncViewMode();
     syncSelectedGenrePath();
     requestUpdate();
   });
