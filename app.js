@@ -185,6 +185,7 @@ const els = {
   verificationStartDateInput: document.getElementById("verificationStartDateInput"),
   verificationEndDateLabel: document.getElementById("verificationEndDateLabel"),
   verificationEndDateInput: document.getElementById("verificationEndDateInput"),
+  verificationDateCalendarGrid: document.getElementById("verificationDateCalendarGrid"),
   verificationCancelDateButton: document.getElementById("verificationCancelDateButton"),
   verificationApplyDateButton: document.getElementById("verificationApplyDateButton"),
   verificationChartWrap: document.getElementById("verificationChartWrap"),
@@ -445,19 +446,17 @@ function previousMonth(month) {
   return date.toISOString().slice(0, 7);
 }
 
-function calendarMonthsToShow() {
-  const end = selectedEndDate() || selectedDate() || state.latestDate;
+function calendarMonthsToShow(startDate = selectedDate(), endDate = selectedEndDate() || selectedDate()) {
+  const end = endDate || startDate || state.latestDate;
   const endMonth = end ? end.slice(0, 7) : "";
   if (!endMonth) return [];
-  const start = selectedDate();
+  const start = startDate;
   const startMonth = start ? start.slice(0, 7) : previousMonth(endMonth);
   if (startMonth && startMonth !== endMonth) return [startMonth, endMonth];
   return [previousMonth(endMonth), endMonth].filter(Boolean);
 }
 
-function renderMonthCalendar(month) {
-  const selectedStart = selectedDate();
-  const selectedEnd = selectedEndDate();
+function renderMonthCalendar(month, selectedStart = selectedDate(), selectedEnd = selectedEndDate()) {
   const firstDay = new Date(`${month}-01T00:00:00Z`);
   const daysInMonth = new Date(Date.UTC(firstDay.getUTCFullYear(), firstDay.getUTCMonth() + 1, 0)).getUTCDate();
   const startOffset = firstDay.getUTCDay();
@@ -490,6 +489,18 @@ function renderDateCalendars() {
   if (!els.dateCalendarGrid || !state.latestDate) return;
   const months = calendarMonthsToShow();
   els.dateCalendarGrid.innerHTML = months.map(renderMonthCalendar).join("");
+}
+
+function renderVerificationDateCalendars() {
+  if (!els.verificationDateCalendarGrid || !state.latestDate) return;
+  const start = els.verificationStartDateInput?.value || state.latestDate;
+  const end = isVerificationRangeMode() ? (els.verificationEndDateInput?.value || start) : start;
+  const rangeStart = start <= end ? start : end;
+  const rangeEnd = start <= end ? end : start;
+  const months = calendarMonthsToShow(rangeStart, rangeEnd);
+  els.verificationDateCalendarGrid.innerHTML = months
+    .map((month) => renderMonthCalendar(month, rangeStart, rangeEnd))
+    .join("");
 }
 
 function isRangeMode() {
@@ -1134,6 +1145,7 @@ function syncVerificationDateButton() {
   if (els.verificationDateCaption) els.verificationDateCaption.textContent = rangeMode ? "Date range" : "Date";
   if (els.verificationDateButtonLabel) els.verificationDateButtonLabel.textContent = verificationDateButtonLabel();
   if (els.verificationDatePopover) els.verificationDatePopover.classList.toggle("day-only", !rangeMode);
+  renderVerificationDateCalendars();
 }
 
 function setVerificationDatePopoverOpen(open) {
@@ -1158,6 +1170,34 @@ function applyVerificationDatePreset(preset, shouldRender = true) {
   syncVerificationDateInputs();
   syncVerificationDateButton();
   if (shouldRender) renderModelVerification();
+}
+
+function stageVerificationCalendarDate(date) {
+  if (!date) return;
+  clearVerificationPresetButtons();
+  if (!isVerificationRangeMode()) {
+    els.verificationStartDateInput.value = date;
+    els.verificationEndDateInput.value = date;
+    syncVerificationDateInputs();
+    return;
+  }
+
+  const start = els.verificationStartDateInput.value;
+  const end = els.verificationEndDateInput.value;
+  if (!start || end) {
+    els.verificationStartDateInput.value = date;
+    els.verificationEndDateInput.value = "";
+    syncVerificationDateInputs();
+    return;
+  }
+
+  if (date < start) {
+    els.verificationStartDateInput.value = date;
+    els.verificationEndDateInput.value = start;
+  } else {
+    els.verificationEndDateInput.value = date;
+  }
+  syncVerificationDateInputs();
 }
 
 function syncVerificationDateInputs() {
@@ -4963,6 +5003,7 @@ els.verificationDateModeSelect?.addEventListener("input", () => {
 
 els.verificationDateButton?.addEventListener("click", (event) => {
   event.stopPropagation();
+  syncVerificationDateInputs();
   setVerificationDatePopoverOpen(els.verificationDatePopover?.hidden);
 });
 
@@ -4976,6 +5017,13 @@ els.verificationPresetButtons?.forEach((button) => {
     button.classList.add("active");
     applyVerificationDatePreset(button.dataset.preset, false);
   });
+});
+
+els.verificationDateCalendarGrid?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  const button = event.target.closest(".calendar-day");
+  if (!button || button.disabled) return;
+  stageVerificationCalendarDate(button.dataset.date);
 });
 
 els.verificationCancelDateButton?.addEventListener("click", () => {

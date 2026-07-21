@@ -274,12 +274,12 @@ main {
 }
 
 .verification-date-popover {
-  grid-template-columns: 150px minmax(320px, 1fr);
+  grid-template-columns: 150px minmax(350px, 1fr);
 }
 
 .verification-date-popover.day-only {
-  grid-template-columns: minmax(320px, 1fr);
-  width: min(430px, calc(100vw - 40px));
+  grid-template-columns: minmax(350px, 1fr);
+  width: min(560px, calc(100vw - 40px));
 }
 
 .verification-date-popover.day-only .preset-list {
