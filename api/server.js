@@ -9,9 +9,10 @@ const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
-const port = Number(process.env.PORT || 3100);
+const port = Number(process.env.PORT || 3000);
 const corsOrigins = new Set((process.env.CORS_ORIGIN || 'https://jasminehou07.github.io').split(',').map((origin) => origin.trim()).filter(Boolean));
 const CSV_DATA_ROOT = '/opt/tenki-dashboard/site-data/data';
+const SITE_ROOT = process.env.SITE_ROOT || '/opt/tenki-dashboard/site-data';
 
 const pool = new Pool({
   connectionString: process.env.API_DATABASE_URL,
@@ -1186,6 +1187,15 @@ app.use('/api/data', express.static('/opt/tenki-dashboard/site-data/data', {
   setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=300')
 }));
 
-app.listen(port, '127.0.0.1', () => {
-  console.log(`TENKI dashboard API listening on 127.0.0.1:${port}`);
+app.use(express.static(SITE_ROOT, {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=300')
+}));
+
+app.get(/.*/, (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  return res.sendFile(path.join(SITE_ROOT, 'index.html'));
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`TENKI dashboard server listening on 0.0.0.0:${port}`);
 });

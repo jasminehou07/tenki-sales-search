@@ -4,7 +4,7 @@ Dashboard for searching Tenki Japan/Rakuten sales estimates by product genre, sh
 
 ## Website
 
-Open the live website at https://172.237.20.132.sslip.io/.
+Open the live website at http://172.237.20.132:3000/.
 
 ## Server Handoff
 

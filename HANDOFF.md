@@ -4,16 +4,16 @@ This folder is the handoff point for the Rakuten/TENKI sales dashboard. It is me
 
 ## Live URLs
 
-- Dashboard: https://172.237.20.132.sslip.io/
-- API health check: https://172.237.20.132.sslip.io/health
-- API base: https://172.237.20.132.sslip.io/api
+- Dashboard: http://172.237.20.132:3000/
+- API health check: http://172.237.20.132:3000/health
+- API base: http://172.237.20.132:3000/api
 
 ## Main Server Paths
 
 - Production app root: `/opt/tenki-dashboard`
 - Company source handoff folder: `/root/src/tenki-sales-search`
 - Served frontend files: `/opt/tenki-dashboard/site-data`
-- Node API: `/opt/tenki-dashboard/api/server.js`
+- Node dashboard/API server: `/opt/tenki-dashboard/api/server.js`
 - Postgres database: `tenki_dashboard`
 - Dashboard parquet outputs: `/opt/tenki-dashboard/parquet`
 - Data-loading scripts: `/opt/tenki-dashboard/scripts`
@@ -96,7 +96,7 @@ npm install
 node server.js
 ```
 
-In production, the API is expected to run behind nginx. Check the existing server process manager or shell session before restarting it.
+In production, this Node process serves both the dashboard website and `/api` routes on port `3000`.
 
 ## Database
 
@@ -135,7 +135,7 @@ Then restart the API process if needed.
 ## Notes
 
 - Keep private TENKI data and secrets off GitHub.
-- The public GitHub Pages URL redirects to the server dashboard.
+- The public GitHub Pages URL points users to the server dashboard.
 - The server source handoff lives in `/root/src/tenki-sales-search` so TENKI can keep or rebuild the project after the internship.
 - The production app still runs from `/opt/tenki-dashboard`; `/root/src/tenki-sales-search` is the reproducible source handoff folder.
 - The server is the current source of truth for Postgres-backed dashboard behavior.
