@@ -3891,9 +3891,9 @@ function renderHorizontalRankGapChart(rows, rankDate) {
   }
 
   const width = 1120;
-  const rowSlot = 38;
+  const rowSlot = 54;
   const height = Math.max(150, 76 + (rows.length * rowSlot));
-  const padLeft = 250;
+  const padLeft = 430;
   const padRight = 34;
   const padTop = 24;
   const padBottom = 38;
@@ -3924,7 +3924,9 @@ function renderHorizontalRankGapChart(rows, rankDate) {
         const tooltipTitle = row.tooltipLabel || label;
         const tooltip = escapeHtml(`${tooltipTitle}\n${isActual ? "Known value" : "Model estimate"}\nSales: ${yen.format(row.sales)}\nUnits sold: ${whole.format(row.units || 0)}\n95% low: ${yen.format(row.salesLow || row.sales)}\n95% high: ${yen.format(row.salesHigh || row.sales)}`);
         return `
-          <text x="${padLeft - 12}" y="${(centerY + 4).toFixed(1)}" text-anchor="end" class="trend-y-label">${escapeHtml(label)}</text>
+          <foreignObject x="12" y="${(centerY - (rowSlot / 2) + 2).toFixed(1)}" width="${padLeft - 26}" height="${rowSlot - 4}">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="rank-chart-label">${escapeHtml(label)}</div>
+          </foreignObject>
           <rect
             x="${padLeft}"
             y="${y.toFixed(1)}"

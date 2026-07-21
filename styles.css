@@ -1406,6 +1406,19 @@ td:nth-child(3),
   max-height: none;
 }
 
+.rank-chart-label {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 100%;
+  justify-content: flex-end;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .rank-bar {
   filter: drop-shadow(0 4px 7px rgba(67, 56, 202, 0.12));
   transition: opacity 140ms ease;
