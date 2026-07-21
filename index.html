@@ -9,7 +9,7 @@
       window.location.replace("https://jasminehou07.github.io/tenki-sales-search/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260721-date-scoped-wmape">
+  <link rel="stylesheet" href="styles.css?v=20260721-verification-copy-cleanup">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -262,7 +262,9 @@
       <div>
         <p class="eyebrow">Model verification</p>
         <h2>Accuracy Checks</h2>
-        <p class="chart-description">Shows how the prediction models are checked with the 95% training / 5% hidden validation method. Lower WMAPE means the model is closer to the known hidden values.</p>
+        <p class="chart-description"><strong>WMAPE</strong> is weighted mean absolute percentage error. A lower number means the model is usually closer to the known sales values.</p>
+        <p class="chart-description"><strong>Genre checks</strong> are most relevant for the By genre page, including Sales by Item and total sales estimates.</p>
+        <p class="chart-description"><strong>Shop checks</strong> are most relevant for the By shop page, where the model estimates each shop's genre mix and total shop performance.</p>
       </div>
       <div class="verification-method">
         <span>Train on 95%</span>
@@ -360,22 +362,8 @@
         </div>
       </div>
     </section>
-
-    <section class="panel verification-panel" aria-label="How to read validation">
-      <div class="panel-heading">
-        <div>
-          <h2>How to Read This</h2>
-          <p class="chart-description">These numbers are validation scores, not exact guarantees for a future day.</p>
-        </div>
-      </div>
-      <div class="verification-notes">
-        <p><strong>WMAPE</strong> is weighted mean absolute percentage error. A lower number means the model is usually closer to the known sales values.</p>
-        <p><strong>Genre checks</strong> are most relevant for the By genre page, including Sales by Item and total sales estimates.</p>
-        <p><strong>Shop checks</strong> are most relevant for the By shop page, where the model estimates each shop's genre mix and total shop performance.</p>
-      </div>
-    </section>
   </main>
 
-  <script src="app.js?v=20260721-date-scoped-wmape"></script>
+  <script src="app.js?v=20260721-verification-copy-cleanup"></script>
 </body>
 </html>
