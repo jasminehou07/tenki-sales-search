@@ -179,6 +179,9 @@ const els = {
   verificationDateButton: document.getElementById("verificationDateButton"),
   verificationDateCaption: document.getElementById("verificationDateCaption"),
   verificationDateButtonLabel: document.getElementById("verificationDateButtonLabel"),
+  verificationDateStepper: document.getElementById("verificationDateStepper"),
+  verificationPrevDateButton: document.getElementById("verificationPrevDateButton"),
+  verificationNextDateButton: document.getElementById("verificationNextDateButton"),
   verificationDatePopover: document.getElementById("verificationDatePopover"),
   verificationPresetButtons: document.querySelectorAll(".verification-preset-button"),
   verificationStartDateText: document.getElementById("verificationStartDateText"),
@@ -1207,6 +1210,7 @@ function syncVerificationDateButton() {
   if (els.verificationDateCaption) els.verificationDateCaption.textContent = rangeMode ? "Date range" : "Date";
   if (els.verificationDateButtonLabel) els.verificationDateButtonLabel.textContent = verificationDateButtonLabel();
   if (els.verificationDatePopover) els.verificationDatePopover.classList.toggle("day-only", !rangeMode);
+  syncVerificationDateStepButtons();
   renderVerificationDateCalendars();
 }
 
@@ -1214,6 +1218,39 @@ function setVerificationDatePopoverOpen(open) {
   if (!els.verificationDatePopover || !els.verificationDateButton) return;
   els.verificationDatePopover.hidden = !open;
   els.verificationDateButton.setAttribute("aria-expanded", String(open));
+}
+
+function syncVerificationDateStepButtons() {
+  if (!els.verificationDateStepper || !els.verificationPrevDateButton || !els.verificationNextDateButton) return;
+  const rangeMode = isVerificationRangeMode();
+  els.verificationDateStepper.hidden = rangeMode;
+  if (rangeMode || !state.dates?.length) {
+    els.verificationPrevDateButton.disabled = true;
+    els.verificationNextDateButton.disabled = true;
+    return;
+  }
+
+  const dates = orderedDates();
+  const currentDate = els.verificationStartDateInput?.value || state.latestDate || "";
+  const currentIndex = dates.indexOf(currentDate);
+  els.verificationPrevDateButton.disabled = currentIndex <= 0;
+  els.verificationNextDateButton.disabled = currentIndex < 0 || currentIndex >= dates.length - 1;
+}
+
+function shiftVerificationSelectedDay(direction) {
+  if (isVerificationRangeMode()) return;
+  const dates = orderedDates();
+  if (!dates.length) return;
+  const currentDate = els.verificationStartDateInput?.value || state.latestDate || dates[dates.length - 1];
+  const currentIndex = dates.indexOf(currentDate);
+  if (currentIndex < 0) return;
+  const nextDate = dates[currentIndex + direction];
+  if (!nextDate) return;
+  clearVerificationPresetButtons();
+  els.verificationStartDateInput.value = nextDate;
+  els.verificationEndDateInput.value = nextDate;
+  syncVerificationDateInputs();
+  renderModelVerification();
 }
 
 function clearVerificationPresetButtons() {
@@ -5114,6 +5151,14 @@ els.verificationApplyDateButton?.addEventListener("click", () => {
   syncVerificationDateInputs();
   setVerificationDatePopoverOpen(false);
   renderModelVerification();
+});
+
+els.verificationPrevDateButton?.addEventListener("click", () => {
+  shiftVerificationSelectedDay(-1);
+});
+
+els.verificationNextDateButton?.addEventListener("click", () => {
+  shiftVerificationSelectedDay(1);
 });
 
 onValueChange(els.rankProjectionSelect, () => requestUpdate());

@@ -520,6 +520,14 @@ body.range-mode .date-stepper {
   display: none;
 }
 
+body.range-mode .verification-date-stepper:not([hidden]) {
+  display: inline-flex;
+}
+
+.verification-date-stepper[hidden] {
+  display: none;
+}
+
 .date-step-button {
   width: 52px;
   min-width: 52px;

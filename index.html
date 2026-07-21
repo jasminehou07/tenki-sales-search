@@ -9,7 +9,7 @@
       window.location.replace("https://172.237.20.132.sslip.io/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260721-validation-presets">
+  <link rel="stylesheet" href="styles.css?v=20260721-validation-day-stepper">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -321,6 +321,10 @@
             </div>
           </div>
         </div>
+        <div id="verificationDateStepper" class="date-stepper verification-date-stepper" aria-label="Quick validation date navigation">
+          <button id="verificationPrevDateButton" class="date-pill date-step-button" type="button" aria-label="Previous validation day">&lt;</button>
+          <button id="verificationNextDateButton" class="date-pill date-step-button" type="button" aria-label="Next validation day">&gt;</button>
+        </div>
       </div>
     </section>
 
@@ -388,6 +392,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260721-validation-presets"></script>
+  <script src="app.js?v=20260721-validation-day-stepper"></script>
 </body>
 </html>
