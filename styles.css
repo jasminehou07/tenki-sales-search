@@ -252,6 +252,40 @@ main {
   padding: 0 16px 16px;
 }
 
+.verification-date-pill-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.verification-date-picker-shell {
+  min-width: min(420px, 100%);
+}
+
+.verification-date-picker-shell .date-range-pill {
+  max-width: 100%;
+}
+
+.verification-date-picker-shell .date-range-pill strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verification-date-popover {
+  grid-template-columns: 150px minmax(320px, 1fr);
+}
+
+.verification-date-popover.day-only {
+  grid-template-columns: minmax(320px, 1fr);
+  width: min(430px, calc(100vw - 40px));
+}
+
+.verification-date-popover.day-only .preset-list {
+  display: none;
+}
+
 .verification-details {
   display: grid;
   gap: 12px;
@@ -559,7 +593,8 @@ body:not(.range-mode) .end-date-field {
   gap: 6px;
 }
 
-.date-preset-button {
+.date-preset-button,
+.verification-preset-button {
   justify-content: start;
   min-height: 40px;
   border-color: transparent;
@@ -570,7 +605,9 @@ body:not(.range-mode) .end-date-field {
 }
 
 .date-preset-button:hover,
-.date-preset-button.active {
+.date-preset-button.active,
+.verification-preset-button:hover,
+.verification-preset-button.active {
   border-color: transparent;
   background: var(--violet-soft);
   color: var(--violet);

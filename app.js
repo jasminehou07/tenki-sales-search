@@ -176,10 +176,17 @@ const els = {
   verificationDetails: document.getElementById("verificationDetails"),
   verificationDateModeSelect: document.getElementById("verificationDateModeSelect"),
   verificationPeriodStatus: document.getElementById("verificationPeriodStatus"),
+  verificationDateButton: document.getElementById("verificationDateButton"),
+  verificationDateCaption: document.getElementById("verificationDateCaption"),
+  verificationDateButtonLabel: document.getElementById("verificationDateButtonLabel"),
+  verificationDatePopover: document.getElementById("verificationDatePopover"),
+  verificationPresetButtons: document.querySelectorAll(".verification-preset-button"),
   verificationStartDateText: document.getElementById("verificationStartDateText"),
   verificationStartDateInput: document.getElementById("verificationStartDateInput"),
   verificationEndDateLabel: document.getElementById("verificationEndDateLabel"),
   verificationEndDateInput: document.getElementById("verificationEndDateInput"),
+  verificationCancelDateButton: document.getElementById("verificationCancelDateButton"),
+  verificationApplyDateButton: document.getElementById("verificationApplyDateButton"),
   verificationChartWrap: document.getElementById("verificationChartWrap"),
   verificationChartDescription: document.getElementById("verificationChartDescription"),
   verificationChartStatus: document.getElementById("verificationChartStatus"),
@@ -1114,6 +1121,45 @@ function isVerificationRangeMode() {
   return (els.verificationDateModeSelect?.value || "day") === "range";
 }
 
+function verificationDateButtonLabel() {
+  const start = els.verificationStartDateInput?.value || state.latestDate || "";
+  const end = isVerificationRangeMode() ? (els.verificationEndDateInput?.value || start) : start;
+  if (!start) return "Choose date";
+  if (!isVerificationRangeMode()) return start;
+  return `${start <= end ? start : end} to ${start <= end ? end : start}`;
+}
+
+function syncVerificationDateButton() {
+  const rangeMode = isVerificationRangeMode();
+  if (els.verificationDateCaption) els.verificationDateCaption.textContent = rangeMode ? "Date range" : "Date";
+  if (els.verificationDateButtonLabel) els.verificationDateButtonLabel.textContent = verificationDateButtonLabel();
+  if (els.verificationDatePopover) els.verificationDatePopover.classList.toggle("day-only", !rangeMode);
+}
+
+function setVerificationDatePopoverOpen(open) {
+  if (!els.verificationDatePopover || !els.verificationDateButton) return;
+  els.verificationDatePopover.hidden = !open;
+  els.verificationDateButton.setAttribute("aria-expanded", String(open));
+}
+
+function clearVerificationPresetButtons() {
+  els.verificationPresetButtons?.forEach((button) => button.classList.remove("active"));
+}
+
+function applyVerificationDatePreset(preset, shouldRender = true) {
+  const count = Number(preset);
+  const dates = Number.isFinite(count)
+    ? datesEndingOn(state.latestDate, count)
+    : datesEndingOn(state.latestDate, 30);
+  if (!dates.length) return;
+  els.verificationDateModeSelect.value = "range";
+  els.verificationStartDateInput.value = dates[0];
+  els.verificationEndDateInput.value = dates[dates.length - 1];
+  syncVerificationDateInputs();
+  syncVerificationDateButton();
+  if (shouldRender) renderModelVerification();
+}
+
 function syncVerificationDateInputs() {
   if (!els.verificationStartDateInput || !els.verificationEndDateInput || !state.latestDate) return;
   [els.verificationStartDateInput, els.verificationEndDateInput].forEach((input) => {
@@ -1126,6 +1172,7 @@ function syncVerificationDateInputs() {
   if (els.verificationStartDateText) els.verificationStartDateText.textContent = rangeMode ? "Start date" : "Date";
   if (els.verificationEndDateLabel) els.verificationEndDateLabel.hidden = !rangeMode;
   if (!rangeMode) els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+  syncVerificationDateButton();
 }
 
 function selectedVerificationDates() {
@@ -4893,13 +4940,55 @@ async function init() {
   el.addEventListener("input", renderModelVerification);
 });
 
-[els.verificationDateModeSelect, els.verificationStartDateInput, els.verificationEndDateInput].filter(Boolean).forEach((el) => {
+els.verificationDateModeSelect?.addEventListener("input", () => {
+  if (isVerificationRangeMode()) {
+    clearVerificationPresetButtons();
+    [...els.verificationPresetButtons].find((button) => button.dataset.preset === "30")?.classList.add("active");
+    applyVerificationDatePreset("30", false);
+  } else {
+    clearVerificationPresetButtons();
+    els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+    syncVerificationDateInputs();
+  }
+  renderModelVerification();
+});
+
+[els.verificationStartDateInput, els.verificationEndDateInput].filter(Boolean).forEach((el) => {
   el.addEventListener("input", () => {
-    if (el === els.verificationDateModeSelect && !isVerificationRangeMode()) {
-      els.verificationEndDateInput.value = els.verificationStartDateInput.value;
-    }
-    renderModelVerification();
+    clearVerificationPresetButtons();
+    if (!isVerificationRangeMode()) els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+    syncVerificationDateInputs();
   });
+});
+
+els.verificationDateButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setVerificationDatePopoverOpen(els.verificationDatePopover?.hidden);
+});
+
+els.verificationDatePopover?.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+els.verificationPresetButtons?.forEach((button) => {
+  button.addEventListener("click", () => {
+    clearVerificationPresetButtons();
+    button.classList.add("active");
+    applyVerificationDatePreset(button.dataset.preset, false);
+  });
+});
+
+els.verificationCancelDateButton?.addEventListener("click", () => {
+  setVerificationDatePopoverOpen(false);
+});
+
+els.verificationApplyDateButton?.addEventListener("click", () => {
+  if (!isVerificationRangeMode()) {
+    els.verificationEndDateInput.value = els.verificationStartDateInput.value;
+  }
+  syncVerificationDateInputs();
+  setVerificationDatePopoverOpen(false);
+  renderModelVerification();
 });
 
 els.rankProjectionSelect?.addEventListener("input", () => requestUpdate());
@@ -5072,9 +5161,16 @@ els.datePresetButtons.forEach((button) => {
 els.granularitySelect.addEventListener("input", () => requestUpdate());
 
 document.addEventListener("click", (event) => {
-  if (els.datePopover.hidden) return;
-  if (els.datePopover.contains(event.target) || els.dateRangeButton.contains(event.target)) return;
-  setDatePopoverOpen(false);
+  if (!els.datePopover.hidden) {
+    if (!els.datePopover.contains(event.target) && !els.dateRangeButton.contains(event.target)) {
+      setDatePopoverOpen(false);
+    }
+  }
+  if (els.verificationDatePopover && !els.verificationDatePopover.hidden) {
+    if (!els.verificationDatePopover.contains(event.target) && !els.verificationDateButton.contains(event.target)) {
+      setVerificationDatePopoverOpen(false);
+    }
+  }
 });
 
 init();

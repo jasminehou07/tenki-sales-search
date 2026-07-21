@@ -9,7 +9,7 @@
       window.location.replace("https://172.237.20.132.sslip.io/");
     }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260721-server-link-readme">
+  <link rel="stylesheet" href="styles.css?v=20260721-verification-date-popover">
 </head>
 <body class="range-mode">
   <header class="app-header">
@@ -275,22 +275,45 @@
         </div>
         <span id="verificationPeriodStatus">Selected period</span>
       </div>
-      <div class="verification-date-controls">
-        <label>
+      <div class="verification-date-controls verification-date-pill-row">
+        <label class="date-mode-label">
           Date type
-          <select id="verificationDateModeSelect">
+          <select id="verificationDateModeSelect" class="date-pill date-mode-select">
             <option value="day">One day</option>
             <option value="range">Date range</option>
           </select>
         </label>
-        <label id="verificationStartDateLabel">
-          <span id="verificationStartDateText">Date</span>
-          <input id="verificationStartDateInput" type="date">
-        </label>
-        <label id="verificationEndDateLabel">
-          End date
-          <input id="verificationEndDateInput" type="date">
-        </label>
+        <div class="date-picker-shell verification-date-picker-shell">
+          <button id="verificationDateButton" class="date-pill date-range-pill" type="button" aria-expanded="false">
+            <span id="verificationDateCaption">Date</span>
+            <strong id="verificationDateButtonLabel">Latest day</strong>
+            <span class="chevron">v</span>
+          </button>
+          <div id="verificationDatePopover" class="date-popover verification-date-popover" hidden>
+            <div id="verificationPresetList" class="preset-list" aria-label="Verification date range presets">
+              <button class="verification-preset-button" type="button" data-preset="7">Last 7 days</button>
+              <button class="verification-preset-button active" type="button" data-preset="30">Past month</button>
+              <button class="verification-preset-button" type="button" data-preset="90">Last 3 months</button>
+              <button class="verification-preset-button" type="button" data-preset="365">Last 12 months</button>
+            </div>
+            <div class="date-popover-main">
+              <div class="calendar-controls verification-calendar-controls" aria-label="Verification calendar date selection">
+                <label id="verificationStartDateLabel">
+                  <span id="verificationStartDateText">Date</span>
+                  <input id="verificationStartDateInput" type="date">
+                </label>
+                <label id="verificationEndDateLabel">
+                  End date
+                  <input id="verificationEndDateInput" type="date">
+                </label>
+              </div>
+              <div class="date-apply-row">
+                <button id="verificationCancelDateButton" type="button">Close</button>
+                <button id="verificationApplyDateButton" class="primary-button" type="button">Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -358,6 +381,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260721-server-link-readme"></script>
+  <script src="app.js?v=20260721-verification-date-popover"></script>
 </body>
 </html>
