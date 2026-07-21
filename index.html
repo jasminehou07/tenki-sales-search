@@ -289,36 +289,6 @@
       </article>
     </section>
 
-    <section class="panel verification-panel" aria-label="Genre training groups">
-      <div class="panel-heading">
-        <div>
-          <h2>Genre Training Breakdown</h2>
-          <p class="chart-description">Each genre should get a WMAPE, but the training method depends on how much known sales data that genre has.</p>
-        </div>
-        <span>3 groups</span>
-      </div>
-      <div class="training-groups">
-        <article>
-          <span>Group 1</span>
-          <h3>High-data genres</h3>
-          <p>Train and validate the genre mostly on its own because there are enough hidden-test rows to trust a genre-specific WMAPE.</p>
-          <small>Best for large categories with many known TENKI sales rows.</small>
-        </article>
-        <article>
-          <span>Group 2</span>
-          <h3>Medium-data genres</h3>
-          <p>Train inside a similar genre group, then calculate WMAPE separately for each genre after prediction.</p>
-          <small>Best for categories like food, fashion, electronics, home, beauty, and sports groups.</small>
-        </article>
-        <article>
-          <span>Group 3</span>
-          <h3>Small or niche genres</h3>
-          <p>Use the grouped model plus a genre-specific adjustment because there is not enough data to safely train that genre alone.</p>
-          <small>Best for rare subgenres where one spike or missing value can distort the model.</small>
-        </article>
-      </div>
-    </section>
-
     <section class="panel verification-panel" aria-label="Model accuracy by entity">
       <div class="panel-heading">
         <div>
