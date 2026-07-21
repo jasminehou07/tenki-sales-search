@@ -1238,15 +1238,20 @@ function scopedSummaryMetricValue(type, entityId) {
   return summary ? Number(summary.metricValue) : null;
 }
 
-function renderVerificationOverviewCards() {
+function renderVerificationOverviewCards(type = els.verificationTypeSelect?.value || "genre", entityId = "all") {
   const salesValue = scopedSummaryMetricValue("genre", "all");
+  const selectedShopValue = type === "shop" && entityId !== "all"
+    ? scopedSummaryMetricValue("shop", entityId)
+    : null;
   if (els.verificationTotalSalesWmape) {
     els.verificationTotalSalesWmape.textContent = Number.isFinite(salesValue)
       ? metricValueText(salesValue)
       : "28.7%";
   }
   if (els.verificationShopWmape) {
-    els.verificationShopWmape.textContent = "49.7%";
+    els.verificationShopWmape.textContent = Number.isFinite(selectedShopValue)
+      ? metricValueText(selectedShopValue)
+      : "49.7%";
   }
 }
 
@@ -1372,7 +1377,7 @@ function renderModelVerification() {
       ? `${start || "Start"} to ${end || "End"}`
       : (start || "Selected day");
   }
-  renderVerificationOverviewCards();
+  renderVerificationOverviewCards(type, entityId);
 
   const fallbackRows = rows.length ? rows : DEFAULT_VALIDATION_METRICS.filter((row) => row.entityType === type || type === "overall");
   const periodRows = scopedSummaryRows.length ? scopedSummaryRows : fallbackRows;
